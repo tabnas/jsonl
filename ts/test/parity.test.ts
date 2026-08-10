@@ -1,4 +1,4 @@
-/* Copyright (c) 2025 Richard Rodger and other contributors, MIT License */
+/* Copyright (c) 2026 Richard Rodger and other contributors, MIT License */
 
 // Cross-runtime conformance, driven by the shared `test/spec/*.tsv` fixtures
 // at the repo root — the same convention @tabnas/parser and @tabnas/abnf use
@@ -12,9 +12,7 @@ import assert from 'node:assert'
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 
-import { Tabnas } from '@tabnas/parser'
-import { jsonic } from '@tabnas/jsonic'
-import { Zon } from '../dist/zon'
+import { make } from '../dist/jsonl'
 
 // At runtime this file is loaded from `dist-test/`, so hop up one level to
 // reach the shared spec directory in the repo root.
@@ -77,8 +75,18 @@ function runSpec(file: string) {
     assert.ok(0 < rows.length, file + ': no cases')
     for (const row of rows) {
       test(`row ${row.line}: ${label(row.input)}`, () => {
-        const opts = '' === row.opts.trim() ? {} : JSON.parse(row.opts)
-        const tn = new Tabnas().use(jsonic).use(Zon, opts)
+        // The opts column is part of the shared fixture format, but this
+        // plugin takes no options. Rather than silently apply one (which
+        // would let a fixture exercise a different configuration here than
+        // in Go, where the runner rejects it), say so. The two runners must
+        // enforce the same no-options contract.
+        assert.equal(
+          row.opts.trim(),
+          '',
+          `${file}:${row.line}: opts ${JSON.stringify(row.opts)} given, ` +
+            'but @tabnas/jsonl has no options',
+        )
+        const tn = make()
 
         if (row.expected.startsWith('ERROR')) {
           const want = row.expected.slice('ERROR'.length).replace(/^:/, '')

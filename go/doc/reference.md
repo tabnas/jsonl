@@ -1,321 +1,341 @@
 # Reference (Go)
 
-The complete public surface of the Go `zon` module: exports, the parse
-entry points, the two options, and the exact ZON syntax accepted. For
-a guided introduction see the [tutorial](tutorial.md); for task recipes
-see the [how-to guide](guide.md); for how it works (and how it differs
-from TypeScript) see [concepts](concepts.md).
+The complete public surface of the Go `jsonl` module: exports, the error
+type, the document grammar, and exactly what a record accepts. Dry and
+exhaustive. For a guided introduction see the [tutorial](tutorial.md);
+for task recipes see the [how-to guide](guide.md); for how it works (and
+how it differs from TypeScript) see [concepts](concepts.md).
 
 ## Module
 
 ```bash
-go get github.com/tabnas/zon/go@latest
+go get github.com/tabnas/jsonl/go@latest
 ```
 
 ```go
-import tabnaszon "github.com/tabnas/zon/go"
+import (
+	tabnasjsonl "github.com/tabnas/jsonl/go"
+	tabnas "github.com/tabnas/parser/go"
+)
 ```
 
 | | |
 |---|---|
-| Module | `github.com/tabnas/zon/go` |
-| Package | `tabnaszon` |
-| Engine | `github.com/tabnas/jsonic/go` (pulled in transitively) |
-| `VERSION` | exported `const` string of the module version |
+| Module | `github.com/tabnas/jsonl/go` |
+| Package | `tabnasjsonl` |
+| Engine | `github.com/tabnas/parser/go` (aliased `tabnas` below) |
+| Base grammar | `github.com/tabnas/json/go` (aliased `tabnasjson` below) |
+| Go | 1.24+ |
+| Format | [JSON Lines](https://jsonlines.org) (JSONL / NDJSON) |
 
-## Public API
+## Exported symbols
 
-### `func Parse(src string, opts ...ZonOptions) (any, error)`
+| Symbol | Kind | Summary |
+|---|---|---|
+| `Parse` | func | Parse a document with the shared default instance. |
+| `Make` | func | Build a JSON Lines parser instance. |
+| `Jsonl` | plugin func | Apply the JSONL options and register the rules on an engine that already has strict JSON. |
+| `RegisterJsonlGrammar` | func | Register only the `jsonl` / `record` rules. |
+| `VERSION` | const string | Module version, always equal to `ts/package.json`. |
+| `JsonlError` | type alias | `= tabnas.TabnasError`, the error a failed parse returns. |
 
-Parses a ZON string and returns the resulting value. Convenience
-wrapper around `MakeJsonic(opts...).Parse(src)`.
+### `func Parse(src string) (any, error)`
 
-With **no** options it reuses a single lazily-created instance, so
-repeated calls do not rebuild the engine + grammar. The shared instance
-is safe for concurrent use (each parse builds its own context and only
-reads instance state). With options, a dedicated instance is built per
-call, since the configuration differs per call.
+Parses a JSON Lines document and returns the slice of per-line values.
+On success the concrete type is always `[]any`, one entry per record, in
+source order. On failure it returns `(nil, *JsonlError)`; it never
+panics.
+
+Uses a single, lazily-created default instance (built once via
+`sync.Once`), so repeated calls do not rebuild the engine and grammar.
+The shared instance is safe for concurrent use: each parse builds its own
+context and only reads instance state.
 
 ```go
-result, err := tabnaszon.Parse(`.{ .a = 1 }`)
-// result: map[string]any{"a": float64(1)}
+doc, err := tabnasjsonl.Parse("{\"a\":1}\n{\"b\":2}")
+// doc: []any{OrderedMap{a:1}, OrderedMap{b:2}}
 ```
 
-### `func MakeJsonic(opts ...ZonOptions) *tabnasjsonic.Jsonic`
+### `func Make(extra ...tabnas.Options) *tabnas.Tabnas`
 
-Returns a reusable `*tabnasjsonic.Jsonic` instance configured for ZON
-parsing. Use this when parsing many strings with the same options:
-build once, call `.Parse()` per input.
+Builds a JSON Lines parser instance: a bare engine with the strict-JSON
+grammar and this plugin installed, in that order. Each `extra` options
+value is applied with `SetOptions` **after** the grammar exists, so rule
+include/exclude filters operate on the installed alternates. Returns a
+reusable, concurrency-safe `*tabnas.Tabnas`.
 
 ```go
-j := tabnaszon.MakeJsonic()
-result, err := j.Parse(`.{ 1, 2, 3 }`)
-// result: []any{float64(1), float64(2), float64(3)}
+p := tabnasjsonl.Make()
+doc, err := p.Parse("1\n2\n3")
+// doc: []any{float64(1), float64(2), float64(3)}
 ```
 
-A plugin-registration failure (a programming error with static inputs)
-panics rather than misbehaving silently.
+`Make` panics only if installing the fixed grammar spec fails — a
+programmer error in this package or its dependency, not reachable from
+caller input.
 
-### `func Zon(j *tabnasjsonic.Jsonic, options map[string]any) error`
+### `func Jsonl(j *tabnas.Tabnas, _ map[string]any) error`
 
-The raw plugin function. Usually invoked indirectly through
-`j.UseDefaults(tabnaszon.Zon, tabnaszon.Defaults, opts...)` or via `Parse` /
-`MakeJsonic`. It is idempotent: a re-invocation guard
-(`zon-init` decoration) makes re-application during `SetOptions` a
-no-op.
+The standard plugin form. Applies the JSONL option overrides
+(`j.SetOptions`) and then calls `RegisterJsonlGrammar(j)`. The options
+argument is ignored: this plugin has no options.
+
+Install it on an engine that **already** carries the strict-JSON
+grammar:
 
 ```go
-j := tabnasjsonic.Make()
-j.UseDefaults(tabnaszon.Zon, tabnaszon.Defaults)
-result, err := j.Parse(`.{ .a = 1 }`)
+j := tabnas.Make()
+if err := j.Use(tabnasjson.Json); err != nil { /* ... */ }
+if err := j.Use(tabnasjsonl.Jsonl); err != nil { /* ... */ }
 ```
 
-### `var Defaults map[string]any`
+If the rule `val` is absent, it installs nothing and returns
 
-The default option map, paired with `Zon` for `UseDefaults`:
+```
+tabnasjsonl: the strict-JSON grammar must be installed first — call
+tabnasjson.Json(j, nil) before Jsonl(j, nil), or use Make()
+```
+
+The base must also be *strict*. A `val` rule alone is not enough — every
+JSON-family grammar has one — so the plugin reads the three lexer options
+that decide record content (`text.lex`, `comment.lex`, `string.chars`) and
+refuses a relaxed base, naming the ones that are wrong:
+
+```
+tabnasjsonl: the installed value grammar is not strict JSON (text.lex),
+so records would not be standard JSON. Layer this plugin on
+github.com/tabnas/json/go, not on a relaxed grammar such as jsonic
+```
+
+### `func RegisterJsonlGrammar(j *tabnas.Tabnas) error`
+
+Installs only the two rules, via the engine's declarative grammar spec
+(`j.Grammar(&tabnas.GrammarSpec{V: 2, Rule: ..., RuleOrder: ...})`). It
+does **not** apply the option overrides, so the rules stay inert until
+the newline is a token the grammar can see and `jsonl` is the start rule
+— supply that yourself (see
+[the guide](guide.md#install-the-rules-without-the-options)). Returns any
+error from the grammar spec.
+
+The rules are function-free: the value tree is built entirely by the
+engine's native-value `$`-builtins, so the spec is serializable.
+
+### `const VERSION string`
+
+The module version string. It always equals the TS package's
+`ts/package.json` `"version"` — `version_test.go` fails the build if the
+two drift.
+
+### `type JsonlError = tabnas.TabnasError`
+
+A type **alias**, not a defined type: a `*JsonlError` and a
+`*tabnas.TabnasError` are the same type, and either name works with
+`errors.As`. Mirrors the TS re-export
+`export { TabnasError as JsonlError }`.
+
+## Errors
+
+A failed parse returns `(nil, *JsonlError)`. Reach it with `errors.As`
+and read the structured fields rather than the message:
 
 ```go
-var Defaults = map[string]any{
-    "charAsNumber": false,
-    "enumTag":      "",
+var je *tabnasjsonl.JsonlError
+if errors.As(err, &je) {
+	// je.Code, je.Row, je.Col
 }
 ```
 
-### `type ZonOptions struct`
+| Field | Type | Meaning |
+|---|---|---|
+| `Code` | `string` | Machine-readable error code (below). |
+| `Detail` | `string` | Human-readable detail message. |
+| `Row` | `int` | 1-based line number — the line of the offending record. |
+| `Col` | `int` | 1-based column number. |
+| `Pos` | `int` | 0-based character position in source. |
+| `Src` | `string` | Source fragment (token text) at the error. |
+| `Hint` | `string` | Additional explanatory text for the code. |
 
-A typed wrapper over the option map. Fields use pointer / empty-value
-conventions so callers can express "omit" vs "set":
+`Error()` returns a formatted, source-pointing report.
 
-```go
-type ZonOptions struct {
-    // When non-nil and true, parses Zig char literals ('x') as numeric
-    // code points. When nil or false (default), they are one-char strings.
-    CharAsNumber *bool
+**Error codes**, inherited from the strict-JSON base and shared with the
+TypeScript port:
 
-    // When non-empty, wraps enum literals (.foo used as value) in
-    // map[string]any{<EnumTag>: name} instead of producing bare strings.
-    EnumTag string
-}
-```
-
-## Options
-
-### `CharAsNumber`
-
-- **Type:** `*bool`
-- **Default:** `false` (nil)
-- **Effect:** Controls how Zig character literals (`'x'`, `'\n'`,
-  `'\x41'`, `'\u{1F600}'`) are parsed.
-  - nil / `false` — the literal becomes a one-character `string`. `'A'`
-    → `"A"`.
-  - `true` — the literal becomes its numeric Unicode code point as a
-    `float64`. `'A'` → `float64(65)`, `'\n'` → `float64(10)`,
-    `'\u{1F600}'` → `float64(0x1F600)`.
-
-```go
-charAsNum := true
-tabnaszon.Parse(`'A'`, tabnaszon.ZonOptions{CharAsNumber: &charAsNum}) // float64(65)
-```
-
-### `EnumTag`
-
-- **Type:** `string`
-- **Default:** `""`
-- **Effect:** Controls how enum-literal *values* (a bare `.foo` used in
-  value position) are represented.
-  - `""` — the enum literal becomes the bare identifier `string`. `.red`
-    → `"red"`.
-  - a non-empty string `T` — the enum literal is wrapped in a one-key
-    map `map[string]any{T: name}`, so it can be told apart from a plain
-    string. With `EnumTag: "$enum"`, `.red` →
-    `map[string]any{"$enum": "red"}`.
-
-`EnumTag` affects enum literals only as values. A `.field` used as a
-key (before `=`) is always the plain field name.
-
-```go
-tabnaszon.Parse(`.{ .kind = .red }`, tabnaszon.ZonOptions{EnumTag: "$enum"})
-// map[string]any{"kind": map[string]any{"$enum": "red"}}
-```
+| Code | When |
+|---|---|
+| `unexpected` | Any character or token no active rule alternative accepts — the catch-all. Covers a record split across lines, records not separated by a newline, and every relaxed-JSON form the strict base rejects. |
+| `unterminated_string` | A string literal with no closing quote (`"abc`). |
+| `invalid_unicode` | A `\u` escape that is not four hex digits (`\uZZZZ`, `\u{41}`). |
 
 ## Value types
 
 `Parse` returns `any`; the concrete Go types are predictable:
 
-| ZON value | Go type |
+| JSON Lines | Go |
 |---|---|
-| Struct literal | `map[string]any` |
-| Tuple / empty literal | `[]any` |
-| String, enum literal, char-as-string | `string` |
-| Number (any base, float, char-as-number) | `float64` |
-| Integer too large for an exact `float64` | `*big.Int` |
-| Boolean | `bool` |
-| Null | `nil` |
-| Tagged enum (`EnumTag` set) | `map[string]any{tag: name}` |
+| Document | `[]any` — one entry per record |
+| Object | `*tabnas.OrderedMap` (`Keys []string`, `Vals map[string]any`, `Get`/`Has`/`Len`) |
+| Array | `[]any` |
+| String | `string` |
+| Number | `float64` (integers included: `1` → `float64(1)`) |
+| `true` / `false` | `bool` |
+| `null` | `nil` |
 
-## ZON syntax
+`*tabnas.OrderedMap` preserves the key order of the source and
+implements `json.Marshaler`. Build the instance with the engine's
+`Map.Plain` option to get plain `map[string]any` objects instead
+(see [the guide](guide.md#get-plain-mapstringany-records)).
 
-ZON is **not** a superset of JSON. It uses Zig anonymous-struct
-syntax. The plugin disables the bare `{`, `[`, `]` openers and rebinds
-the key/value separator to `=`.
+## Document grammar
 
-### Structs (maps)
+A document is a possibly-empty sequence of records. A record is one
+complete standard-JSON value occupying exactly one line. The separator is
+the newline, and only the newline.
 
-Open with `.{`, contain `.field = value` pairs separated by commas,
-close with `}`. Field names are identifiers
-(`[A-Za-z_][A-Za-z0-9_]*`); the leading dot is stripped from the key. A
-name that is not a legal identifier is written `.@"..."` — any string
-literal, with the same escapes — and a struct may not repeat a name.
+| Source | Result |
+|---|---|
+| `{"a":1}` | 1 record |
+| `{"a":1}\n{"b":2}` | 2 records |
+| `{"a":1}\n` | 1 record — a trailing separator adds none |
+| `{"a":1}\r\n{"b":2}` | 2 records — CRLF is one newline |
+| `{"a":1}\n\n\n{"b":2}` | 2 records — blank lines are tolerated |
+| `\n{"a":1}\n\n{"b":2}\n` | 2 records — leading and trailing blank lines too |
+| `  {"a":1}  ` | 1 record — spaces and tabs around a record are insignificant |
+| `\n`, `\n\n`, `  \n  `, `   ` | 0 records — a document with no record content |
+| `""` (empty source) | **error** — see below |
+| `{"a":\n1}` | **error** — a value split across lines is not a record |
+| `{"a":1}{"b":2}` | **error** — adjacency is not a separator |
+| `{"a":1} {"b":2}` | **error** — a space is not a separator |
+| `{"a":1},{"b":2}` | **error** — a comma is not a separator; a document is not a JSON array |
 
-```
-.{ .a = 1, .b = 2 }       => map[string]any{"a": 1, "b": 2}
-.{ .a = .{ .b = 1 } }     => map[string]any{"a": map[string]any{"b": 1}}
-.{ .@"a b" = 1 }          => map[string]any{"a b": 1}
-.{ .a = 1, .a = 2 }       => error: duplicate struct field name
-```
+In that table `\n`, `\r` and `\t` are the characters themselves. Inside a
+JSON string the two-character escape `\n` is ordinary data, so a record
+containing one stays a single record: `"a\nb"` written on one line parses
+to one string.
 
-### Tuples (lists)
+Any JSON value may be a record — object, array, string, number, `true`,
+`false`, `null` — so `1\n2\n3` is three records and
+`{"a":1}\n[1,2]\n"text"` is three records of three different shapes.
 
-Also open with `.{`, but contain bare values (no `.field =`), separated
-by commas, and close with `}`. Produces a `[]any`.
+**Empty source.** `""` is rejected (`Lex.Empty` is `false`, inherited
+from the strict-JSON base, which matches `encoding/json` on `""`). A
+source of only separators or only spaces is a different case: it holds
+zero records and parses to an empty `[]any`. (Enabling `Lex.Empty` on
+your own instance makes `""` return the engine's empty result, `nil` —
+not a zero-record document.)
 
-```
-.{ 1, 2, 3 }              => []any{1, 2, 3}
-.{ .{ 1, 2 }, .{ 3, 4 } } => []any{[]any{1, 2}, []any{3, 4}}
-```
+## Record content
 
-The struct-vs-tuple decision is made at lex time by peeking past `.{`:
-if the next significant token is a field name (`.identifier` or
-`.@"..."`) followed by `=`, it is a struct; otherwise a tuple.
+A record's content is strict, standard JSON, inherited whole from
+`github.com/tabnas/json/go` and not restated by this plugin. Accepted:
+objects with double-quoted string keys, arrays, double-quoted strings
+(escapes `\" \\ \/ \b \f \n \r \t` and `\uXXXX`, surrogate pairs
+included), numbers (optional `-`, no-leading-zero integer, optional
+fraction, optional `e`/`E` exponent), `true`, `false`, `null`, and
+insignificant spaces and tabs.
 
-### Empty literal
+Rejected, per record, exactly as `encoding/json` rejects them:
 
-An empty `.{}` parses as an **empty list** (`[]any{}`).
+| Rejected | Example |
+|---|---|
+| Unquoted keys | `{a:1}` |
+| Single-quoted or backtick strings | `{'a':1}`, ``{"a":`v`}`` |
+| Comments | `{"a":1} // c`, `{"a":1} # c` |
+| Trailing commas | `{"a":1,}`, `[1,2,]` |
+| Implicit (brace-less) objects and lists | `a:1`, `1,2` |
+| Non-standard numbers | `01`, `+1`, `.5`, `1.`, `0x1F`, `1_000` |
+| Non-standard escapes | `"\q"`, `"\x41"` |
+| Unterminated or malformed values | `{"a":1`, `{"a":}`, `"unterminated` |
+| Bare words | `nope`, `{"a":undefined}` |
 
-```
-.{}                       => []any{}
-```
+## Rules
 
-### Trailing commas
+`RegisterJsonlGrammar` adds two rules to the five (`val` / `map` /
+`list` / `pair` / `elem`) that arrive with the strict-JSON grammar; those
+five are reused untouched. Each rule is a small state machine with *open*
+alternates (entering) and *close* alternates (leaving). The start rule is
+`jsonl`.
 
-Allowed before `}` in both structs and tuples.
+### `jsonl` — the document
 
-```
-.{ .a = 1, }              => map[string]any{"a": 1}
-.{ 1, 2, 3, }             => []any{1, 2, 3}
-```
+| Phase | Tokens | Push/Replace | Action | Meaning |
+|---|---|---|---|---|
+| open | `#ZZ` | — | `@array$` | End of input with no separator seen: zero records (a spaces-only source; `""` is rejected before the grammar runs). |
+| open | `#LN #ZZ` | — | `@array$` | Only separators: zero records. |
+| open | `#LN` | push `record` | `@array$` | Leading blank line(s), then the first record. |
+| open | — | push `record` | `@array$` | The ordinary case: the first record starts immediately. |
+| close | — | — | — | `record` consumes through end of input; nothing is left to match. |
 
-### Scalars
+### `record` — one line
 
-| Construct | Example | Result |
-|---|---|---|
-| Integer | `42` | `float64(42)` |
-| Float | `3.14` | `float64(3.14)` |
-| Hex | `0x2a` | `float64(42)` |
-| Octal | `0o52` | `float64(42)` |
-| Binary | `0b101010` | `float64(42)` |
-| Hex float | `0x1.8p1` | `float64(3)` |
-| Exponent | `1e5` | `float64(100000)` |
-| Digit separator | `1_000_000` | `float64(1000000)` |
-| Infinity / NaN | `inf`, `-inf`, `nan` | `math.Inf(1)`, `math.Inf(-1)`, `math.NaN()` |
-| Big integer | `36893488147419103231` | a `*big.Int` |
-| Boolean | `true`, `false` | `true`, `false` |
-| Null | `null` | `nil` |
-| String | `"hello"` | `"hello"` |
-| Enum literal | `.red`, `.@"a b"` | `"red"`, `"a b"` (or tagged map) |
-| Char literal | `'A'` | `"A"` (or `float64(65)`) |
+| Phase | Tokens | Push/Replace | Action | Meaning |
+|---|---|---|---|---|
+| open | — | push `val` | — | A record is any strict-JSON value. |
+| close | `#LN #ZZ` | — | `@push$` | Trailing separator at end of input. |
+| close | `#LN` | replace `record` | `@push$` | Separator with more to come: iterate. |
+| close | `#ZZ` | — | `@push$` | End of input with no trailing newline. |
 
-### Numbers are Zig numbers, not relaxed-JSON numbers
+`@array$` allocates the document array; `@push$` appends the
+just-built record to it. The close alternates iterate with **replace**,
+not push, so record count does not grow the rule stack — a 20 000-record
+document is parsed at constant rule depth (`jsonl_test.go`).
 
-The plugin replaces jsonic's number lexer with one that implements Zig's
-literal grammar exactly, so ZON's strictness is preserved:
+Every alternate carries the group tag `jsonl`, which is what
+`Rule.Include` (below) admits.
 
-```
-+1      .5      5.      0123      00      -0
-1__0    1_      _1      0x_2A     0X2A    0O52
-0b12    0o18    1abc    1e        0b1.1   0.1.2
-```
-
-are all **rejected**, as the zig compiler rejects them. A leading `-` is a
-negation prefix and may be separated by space (`- 1`); `-nan` is not a
-literal. An integer whose exact value does not fit a `float64` is returned
-as a `*big.Int` rather than silently rounded.
-
-### Strings
-
-Double-quoted strings only (single quotes are char literals).
-Zig-flavoured escapes: `\n`, `\r`, `\t`, `\\`, `\"`, `\'`. Unknown
-escapes are an error.
-
-```
-"a\nb"                    => "a\nb"
-"a\\b"                    => "a\b"
-```
-
-### Multi-line strings
-
-Consecutive lines beginning with `\\` form one string. Each line
-contributes its text after the `\\`; lines join with `\n`. Zig lexes the
-whole run as one token and skips the whitespace between the lines, so
-**blank lines inside the run continue the literal** (contributing an empty
-line) rather than ending it.
-
-```
-\\hello
-\\world                   => "hello\nworld"
-```
-
-### Character literals
-
-Single-quoted Zig char literals: a single character, an escape (`'\n'`,
-`'\r'`, `'\t'`, `'\\'`, `'\''`, `'\"'`, `'\0'`), a hex escape `'\xNN'`,
-or a Unicode escape `'\u{...}'`. Default result is a one-character
-string; with `CharAsNumber` set, the numeric code point as `float64`.
-
-### Comments
-
-`//` line comments only; discarded. `//!` and `///` are Zig **doc**
-comments, which ZON rejects; `////` (four or more slashes) is an ordinary
-comment again. (Hash `#` and block `/* */` comments are disabled by the
-plugin.)
-
-```
-.{
-  // a comment
-  .name = "x", // trailing comment
-}                         => map[string]any{"name": "x"}
-```
+`RuleOrder` is declared in the grammar spec because a Go map has no
+order: without it the engine falls back to sorted rule names, and
+anything built on `(*Tabnas).RuleNames` would report the rules
+alphabetically rather than as written.
 
 ## Tokens
 
-| Token | Source | Meaning |
+| Token | Source | Role |
 |---|---|---|
-| `#OB` | `.{` | start of a struct (map) |
-| `#OS` | `.{` | start of a tuple (list) |
-| `#CB` | `}` | close of struct or tuple |
-| `#CL` | `=` | key/value separator |
-| `#TX` | `.ident`, `.@"..."` | field name (key) or enum literal (value) |
-| `VAL` | — | number, string, `true`/`false`/`null`, or `.enum` |
+| `#LN` | a run of line characters (`\r`, `\n`) | The record separator. **Not** ignored under this plugin. |
+| `#ZZ` | end of source | Document terminator. |
+| `#SP` | spaces and tabs | Ignored. |
+| `#CM` | comments | Ignored — but comment lexing is off in strict JSON, so no `#CM` is produced. |
 
-`{`, `[`, `]` are not tokens — a bare `{` is a syntax error.
+The engine's line matcher scans a *run* of line characters into a single
+`#LN` token (and treats CRLF as one newline), which is why blank lines
+between records need no rule of their own.
 
-## Grammar group tag
+## Options
 
-Every grammar alternate the plugin adds carries the group tag `zon`.
-Callers can switch the ZON alts off (restoring plain jsonic) via
-`Options{Rule: &RuleOptions{Exclude: "zon"}}`:
+**This plugin has no options of its own.** The `options` argument to
+`Jsonl` is ignored, and `parity_test.go` fails any shared fixture row
+that sets the `opts` column.
+
+What it does set, over the strict-JSON base:
+
+| Option | Value | Effect |
+|---|---|---|
+| `TokenSet["IGNORE"]` | `{"#SP", "#CM"}` | Replaces the default ignore set `{#SP, #LN, #CM}`, dropping `#LN` — the newline becomes a token the grammar can match. |
+| `Rule.Start` | `"jsonl"` | Parse a whole document, not a single value. |
+| `Rule.Include` | `"json,jsonl"` | Widens the json plugin's `json`-only alternate filter to admit this plugin's alternates. |
+
+Everything else — the strict lexer, the value grammar, the error codes —
+is inherited from `github.com/tabnas/json/go`.
+
+To configure the parser, pass engine options to `Make`; they are applied
+after the grammar is installed:
 
 ```go
-j := tabnasjsonic.Make()
-j.UseDefaults(tabnaszon.Zon, tabnaszon.Defaults)
-j.SetOptions(tabnasjsonic.Options{Rule: &tabnasjsonic.RuleOptions{Exclude: "zon"}})
+tr := true
+p := tabnasjsonl.Make(tabnas.Options{Map: &tabnas.MapOptions{Plain: &tr}})
 ```
 
-## Errors
+## Conformance fixtures
 
-`Parse` and `Jsonic.Parse` return an `error` rather than panicking. The
-error is jsonic's parse error, reporting an error code and the source
-location (row, column, position). Inputs that are valid jsonic but not
-valid ZON (such as a bare `{` opener) are errors. See the
-[differences section](concepts.md#differences-from-the-ts-version) for
-the few error-code divergences from TypeScript.
+The cross-runtime parse cases live in
+[`../../test/spec/`](../../test/spec/) and are run by both runtimes
+(`go/parity_test.go` globs them; `ts/test/parity.test.ts` reads the same
+directory):
+
+| File | What it pins |
+|---|---|
+| `records.tsv` | The document is an array of per-line values; records are independent and need not share a shape. |
+| `values.tsv` | Any JSON value may be a record; escape handling per record. |
+| `separators.tsv` | Trailing newline, CRLF, blank lines, leading/trailing blanks, separator-only documents, surrounding spaces. |
+| `oneline.tsv` | The one-record-per-line rule: split values fail, and adjacency, spaces, or commas are not separators. |
+| `strict.tsv` | Record content is strict JSON — no relaxed-JSON form was re-admitted by layering. |

@@ -1,35 +1,32 @@
 {
-  "name": "@tabnas/zon",
-  "version": "0.5.1",
-  "description": "This plugin allows the [Tabnas](https://github.com/tabnas/parser) JSON parser to support Zig Object Notation (ZON) syntax.",
-  "main": "dist/zon.js",
+  "name": "@tabnas/jsonl",
+  "version": "0.1.0",
+  "description": "This plugin allows the [Tabnas](https://github.com/tabnas/parser) parsing engine to parse JSON Lines (JSONL / NDJSON): one standard-JSON value per line.",
+  "main": "dist/jsonl.js",
   "type": "commonjs",
-  "browser": "zon.min.js",
-  "types": "dist/zon.d.ts",
-  "homepage": "https://github.com/tabnas/zon",
+  "types": "dist/jsonl.d.ts",
+  "homepage": "https://github.com/tabnas/jsonl",
   "keywords": [
-    "zon",
-    "zig",
+    "jsonl",
+    "ndjson",
+    "json-lines",
     "tabnas",
     "parser",
-    "object",
-    "json"
+    "json",
+    "streaming"
   ],
   "author": "Richard Rodger (http://richardrodger.com)",
   "repository": {
     "type": "git",
-    "url": "git://github.com/tabnas/zon.git",
+    "url": "git://github.com/tabnas/jsonl.git",
     "directory": "ts"
   },
   "scripts": {
-    "corpus": "bash ../scripts/fetch-zigzon.sh",
-    "pretest": "npm run corpus",
     "test": "node --enable-source-maps --test \"dist-test/*.test.js\"",
     "test-some": "node --enable-source-maps --test-name-pattern=\"$npm_config_pattern\" --test \"dist-test/*.test.js\"",
-    "test-watch": "node --test --watch dist-test/zon.test.js",
-    "embed": "node embed-grammar.js",
+    "test-watch": "node --test --watch dist-test/jsonl.test.js",
     "watch": "tsc --build src test -w",
-    "build": "node embed-grammar.js && tsc --build src test",
+    "build": "tsc --build src test",
     "clean": "rm -rf node_modules dist dist-test yarn.lock package-lock.json",
     "reset": "npm run clean && npm i && npm run build && npm test",
     "repo-tag": "REPO_VERSION=`node -e \"console.log(require('./package').version)\"` && echo TAG: v$REPO_VERSION && git commit -a -m v$REPO_VERSION && git push && git tag v$REPO_VERSION && git push --tags;",
@@ -47,14 +44,13 @@
     "LICENSE"
   ],
   "peerDependencies": {
-    "@tabnas/jsonic": ">=0",
+    "@tabnas/json": ">=0",
     "@tabnas/parser": ">=0"
   },
   "devDependencies": {
     "@tabnas/debug": "*",
-    "@tabnas/jsonic": "*",
+    "@tabnas/json": "*",
     "@tabnas/parser": "*",
-    "@tabnas/railroad": "*",
     "@types/node": "25.6.0",
     "typescript": "6.0.3"
   },
