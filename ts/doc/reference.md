@@ -104,6 +104,18 @@ The order is required, not conventional: `@tabnas/json` sets
 `rule.include: 'json'`, which would filter this plugin's alternates back
 out if it were applied afterwards.
 
+The base must also be *strict*. A `val` rule alone is not enough — every
+JSON-family grammar has one — so the plugin reads the three lexer options
+that decide record content (`text.lex`, `comment.lex`, `string.chars`) and
+refuses a relaxed base, naming the ones that are wrong:
+
+```text
+@tabnas/jsonl: the installed value grammar is not strict JSON (text.lex,
+comment.lex, string.chars), so records would not be standard JSON. Layer
+this plugin on `@tabnas/json`, not on a relaxed grammar such as
+`@tabnas/jsonic`.
+```
+
 ### `registerJsonlGrammar(tn: Tabnas): void`
 
 Installs only the two document rules (`jsonl` and `record`) via

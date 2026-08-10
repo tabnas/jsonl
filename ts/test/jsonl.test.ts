@@ -91,6 +91,47 @@ describe('layering on @tabnas/json', () => {
     )
   })
 
+  test('a relaxed value grammar is rejected, not silently accepted', () => {
+    // A `val` rule alone does not make a base strict: a relaxed grammar has
+    // one too, and layering on it would accept `{a:1}` as a record. The
+    // plugin checks the lexer options that decide record content instead.
+    const tn = new Tabnas().use(json)
+    tn.options({ text: { lex: true } })
+    assert.throws(
+      () => tn.use(jsonl),
+      (err: Error) =>
+        /not strict JSON/.test(err.message) && /text\.lex/.test(err.message),
+      'the error should name the offending option',
+    )
+  })
+
+  test('re-applying the plugin does not recurse or duplicate rules', () => {
+    // Registering via use() means the engine may invoke the plugin again
+    // (deriving a child re-applies registered plugins). Re-application must
+    // not recurse, duplicate rules, or change parse behaviour.
+    const tn = new Tabnas().use(json).use(jsonl)
+    const names = () => Object.keys(tn.rule() as object).sort()
+    const before = names()
+
+    tn.options({ comment: { lex: true } })
+    assert.deepStrictEqual(names(), before, 'rule set changed after options')
+    assert.deepStrictEqual(plain(tn.parse('{"a":1}\n{"b":2}')), [
+      { a: 1 },
+      { b: 2 },
+    ])
+
+    const child = tn.make()
+    assert.deepStrictEqual(
+      Object.keys(child.rule() as object).sort(),
+      before,
+      'derived child has a different rule set',
+    )
+    assert.deepStrictEqual(plain(child.parse('{"a":1}\n{"b":2}')), [
+      { a: 1 },
+      { b: 2 },
+    ])
+  })
+
   test('the strict-JSON rules are reused, not redefined', () => {
     // `registerJsonlGrammar` adds exactly the two document rules; the five
     // JSON rules must already be there and must survive.

@@ -188,6 +188,86 @@ func TestErrorLineSurvivesManyRecords(t *testing.T) {
 	}
 }
 
+func TestSplitValueReportsTheBreakingLine(t *testing.T) {
+	// Mirrors the TS case. The shared oneline.tsv fixture pins only that a
+	// split value FAILS; it cannot check where. Without this, a Go-only
+	// regression in the error location would pass the parity suite.
+	_, err := Parse("{\"a\":1}\n{\"b\":\n2}")
+	if err == nil {
+		t.Fatal("expected a parse error")
+	}
+	var je *JsonlError
+	if !errors.As(err, &je) {
+		t.Fatalf("expected a *JsonlError, got %T", err)
+	}
+	if je.Row != 2 {
+		t.Errorf("expected the error on line 2, got line %d", je.Row)
+	}
+}
+
+func TestPluginRejectsARelaxedValueGrammar(t *testing.T) {
+	// A `val` rule alone does not make a base strict: a relaxed grammar has
+	// one too, and layering on it would accept {a:1} as a record. The plugin
+	// checks the lexer options that decide record content instead.
+	j := tabnas.Make()
+	if err := tabnasjson.Json(j, nil); err != nil {
+		t.Fatalf("json plugin: %v", err)
+	}
+	// Relax one of the three checked options back to a non-JSON setting.
+	tr := true
+	j.SetOptions(tabnas.Options{Text: &tabnas.TextOptions{Lex: &tr}})
+
+	err := Jsonl(j, nil)
+	if err == nil {
+		t.Fatal("expected Jsonl to reject a non-strict value grammar")
+	}
+	if !strings.Contains(err.Error(), "not strict JSON") ||
+		!strings.Contains(err.Error(), "text.lex") {
+		t.Errorf("error should name the offending option, got %q", err.Error())
+	}
+}
+
+func TestPluginSurvivesReapplication(t *testing.T) {
+	// Registering via Use means the engine may invoke the plugin again —
+	// Derive re-applies every registered plugin on the child. Re-application
+	// must not recurse, duplicate rules, or change parse behaviour.
+	j := tabnas.Make()
+	if err := j.Use(tabnasjson.Json); err != nil {
+		t.Fatalf("json use: %v", err)
+	}
+	if err := j.Use(Jsonl); err != nil {
+		t.Fatalf("jsonl use: %v", err)
+	}
+
+	check := func(label string, e *tabnas.Tabnas) {
+		t.Helper()
+		if n := len(e.RuleNames()); n != 7 {
+			t.Errorf("%s: expected 7 rules, got %d (%v)", label, n, e.RuleNames())
+		}
+		got, err := e.Parse("{\"a\":1}\n{\"b\":2}")
+		if err != nil {
+			t.Fatalf("%s: parse: %v", label, err)
+		}
+		if n := len(plain(t, got).([]any)); n != 2 {
+			t.Errorf("%s: expected 2 records, got %d", label, n)
+		}
+	}
+
+	check("after Use", j)
+
+	// SetOptions on a plugin-registered engine.
+	tr := true
+	j.SetOptions(tabnas.Options{Comment: &tabnas.CommentOptions{Lex: &tr}})
+	check("after SetOptions", j)
+
+	// Derive genuinely re-invokes the registered plugins on the child.
+	child, err := j.Derive(tabnas.Options{})
+	if err != nil {
+		t.Fatalf("derive: %v", err)
+	}
+	check("derived child", child)
+}
+
 func TestEmptySourceIsRejectedBlankLinesAreNot(t *testing.T) {
 	// Empty source is rejected by the strict-JSON base (lex.Empty false),
 	// matching encoding/json on "". A document of only blank lines is a

@@ -96,6 +96,15 @@ the two copies honest; there is nothing to re-embed after an edit.
   strict-JSON grammar is already installed and report a named error if it
   is not. Keep that check: without it the failure mode is an obscure
   parse error much later.
+- **The base check tests strictness, not the presence of a `val` rule.**
+  Every JSON-family grammar defines `val`, so a rule-name check alone
+  passes on a *relaxed* base: `use(jsonic).use(jsonl)` would then accept
+  `{a:1}` as a record, contradicting what this package documents. Both
+  runtimes therefore read the three lexer options that actually decide
+  record content — `text.lex`, `comment.lex`, `string.chars` — and refuse
+  a base that relaxes any of them, naming the offending ones. If you ever
+  need a relaxed JSONL, that is a different plugin, not a looser check
+  here.
 - **`rule.include` must list both tags.** This plugin sets
   `include: 'json,jsonl'`. Narrowing it back to `'json'` disables every
   alternate here.

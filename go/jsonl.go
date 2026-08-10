@@ -35,6 +35,7 @@ package tabnasjsonl
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 
 	tabnasjson "github.com/tabnas/json/go"
@@ -193,13 +194,52 @@ func RegisterJsonlGrammar(j *tabnas.Tabnas) error {
 // plugin here when it is absent would silently accept the wrong order, so
 // instead the missing-grammar case is reported.
 func Jsonl(j *tabnas.Tabnas, _ map[string]any) error {
+	if err := checkStrictJSONBase(j); err != nil {
+		return err
+	}
+	j.SetOptions(jsonlOptions())
+	return RegisterJsonlGrammar(j)
+}
+
+// checkStrictJSONBase reports whether the engine carries a STRICT-JSON value
+// grammar to layer on.
+//
+// Testing for a val rule alone is not enough: every JSON-family grammar
+// defines one, so installing over a relaxed grammar would pass such a check
+// and then happily accept {a:1} — a document this package's own
+// documentation says is invalid. What matters is not which package
+// installed the rules but whether a record's CONTENT is standard JSON, so
+// the check reads the three lexer options that decide exactly that. A
+// relaxed grammar fails at least one of them (jsonic lexes bare text, lexes
+// comments, and accepts ' and backtick strings), and the error names the
+// ones that are wrong.
+func checkStrictJSONBase(j *tabnas.Tabnas) error {
 	if !hasRule(j, "val") {
 		return fmt.Errorf(
 			"tabnasjsonl: the strict-JSON grammar must be installed first — " +
 				"call tabnasjson.Json(j, nil) before Jsonl(j, nil), or use Make()")
 	}
-	j.SetOptions(jsonlOptions())
-	return RegisterJsonlGrammar(j)
+
+	opts := j.Options()
+	var relaxed []string
+	if opts.Text == nil || opts.Text.Lex == nil || *opts.Text.Lex {
+		relaxed = append(relaxed, "text.lex")
+	}
+	if opts.Comment == nil || opts.Comment.Lex == nil || *opts.Comment.Lex {
+		relaxed = append(relaxed, "comment.lex")
+	}
+	if opts.String == nil || opts.String.Chars != `"` {
+		relaxed = append(relaxed, "string.chars")
+	}
+
+	if 0 < len(relaxed) {
+		return fmt.Errorf(
+			"tabnasjsonl: the installed value grammar is not strict JSON (%s), "+
+				"so records would not be standard JSON. Layer this plugin on "+
+				"github.com/tabnas/json/go, not on a relaxed grammar such as jsonic",
+			strings.Join(relaxed, ", "))
+	}
+	return nil
 }
 
 // hasRule reports whether the named rule is defined on j.

@@ -75,8 +75,18 @@ function runSpec(file: string) {
     assert.ok(0 < rows.length, file + ': no cases')
     for (const row of rows) {
       test(`row ${row.line}: ${label(row.input)}`, () => {
-        const opts = '' === row.opts.trim() ? {} : JSON.parse(row.opts)
-        const tn = make(opts)
+        // The opts column is part of the shared fixture format, but this
+        // plugin takes no options. Rather than silently apply one (which
+        // would let a fixture exercise a different configuration here than
+        // in Go, where the runner rejects it), say so. The two runners must
+        // enforce the same no-options contract.
+        assert.equal(
+          row.opts.trim(),
+          '',
+          `${file}:${row.line}: opts ${JSON.stringify(row.opts)} given, ` +
+            'but @tabnas/jsonl has no options',
+        )
+        const tn = make()
 
         if (row.expected.startsWith('ERROR')) {
           const want = row.expected.slice('ERROR'.length).replace(/^:/, '')

@@ -180,6 +180,24 @@ msg.includes('strict-JSON grammar must be installed first')   // => true
 
 The `make()` and `parse()` helpers do this for you.
 
+The base has to be *strict* JSON, not merely a grammar that has values.
+Layering on a relaxed grammar such as `@tabnas/jsonic` would make `{a:1}` a
+valid record, so the plugin checks the lexer options that decide record
+content and refuses, naming the ones that are wrong:
+
+```js
+const { Tabnas } = require('@tabnas/parser')
+const { json } = require('@tabnas/json')
+const { jsonl } = require('@tabnas/jsonl')
+
+const tn = new Tabnas().use(json)
+tn.options({ text: { lex: true } })   // no longer strict JSON
+
+let named = false
+try { tn.use(jsonl) } catch (e) { named = /not strict JSON.*text\.lex/.test(e.message) }
+named   // => true
+```
+
 ## Errors
 
 A malformed record throws a `TabnasError` reporting the line it is on, so

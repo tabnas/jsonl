@@ -96,6 +96,17 @@ tabnasjsonl: the strict-JSON grammar must be installed first — call
 tabnasjson.Json(j, nil) before Jsonl(j, nil), or use Make()
 ```
 
+The base must also be *strict*. A `val` rule alone is not enough — every
+JSON-family grammar has one — so the plugin reads the three lexer options
+that decide record content (`text.lex`, `comment.lex`, `string.chars`) and
+refuses a relaxed base, naming the ones that are wrong:
+
+```
+tabnasjsonl: the installed value grammar is not strict JSON (text.lex),
+so records would not be standard JSON. Layer this plugin on
+github.com/tabnas/json/go, not on a relaxed grammar such as jsonic
+```
+
 ### `func RegisterJsonlGrammar(j *tabnas.Tabnas) error`
 
 Installs only the two rules, via the engine's declarative grammar spec

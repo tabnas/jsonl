@@ -167,8 +167,25 @@ export function registerJsonlGrammar(tn: Tabnas): void {
 // when it is absent would silently accept the wrong order, so instead the
 // missing-grammar case is reported.
 export const jsonl: Plugin = function jsonl(tn: Tabnas, _options?: any) {
-  // `tn.rule(name)` returns the instance itself when the rule is absent
-  // (it chains), so ask for the whole rule map and look in that instead.
+  assertStrictJsonBase(tn)
+  tn.options(JSONL_OPTIONS)
+  registerJsonlGrammar(tn)
+}
+
+// Check that the engine carries a STRICT-JSON value grammar before layering
+// on it.
+//
+// Testing for a `val` rule alone is not enough: every JSON-family grammar
+// defines one, so `use(jsonic).use(jsonl)` would pass such a check and then
+// happily accept `{a:1}` — a document this package's own documentation says
+// is invalid. What matters is not which package installed the rules but
+// whether a record's CONTENT is standard JSON, so the check reads the three
+// lexer options that decide exactly that. A relaxed grammar fails at least
+// one of them (jsonic lexes bare text, lexes comments, and accepts `'` and
+// backtick strings), and the error names the ones that are wrong.
+function assertStrictJsonBase(tn: Tabnas): void {
+  // `tn.rule(name)` returns the instance itself when the rule is absent (it
+  // chains), so ask for the whole rule map and look in that instead.
   const rules = tn.rule() as Record<string, unknown>
   if (!rules || !rules.val) {
     throw new Error(
@@ -177,8 +194,21 @@ export const jsonl: Plugin = function jsonl(tn: Tabnas, _options?: any) {
         '`make()`.',
     )
   }
-  tn.options(JSONL_OPTIONS)
-  registerJsonlGrammar(tn)
+
+  const opts = tn.options() as any
+  const relaxed: string[] = []
+  if (false !== opts?.text?.lex) relaxed.push('text.lex')
+  if (false !== opts?.comment?.lex) relaxed.push('comment.lex')
+  if ('"' !== opts?.string?.chars) relaxed.push('string.chars')
+
+  if (0 < relaxed.length) {
+    throw new Error(
+      '@tabnas/jsonl: the installed value grammar is not strict JSON (' +
+        relaxed.join(', ') +
+        '), so records would not be standard JSON. Layer this plugin on ' +
+        '`@tabnas/json`, not on a relaxed grammar such as `@tabnas/jsonic`.',
+    )
+  }
 }
 
 // Create a JSON Lines parser instance: a tabnas engine with the strict-JSON
