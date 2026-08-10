@@ -1,130 +1,279 @@
-# Tutorial — your first ZON parse
+# Tutorial: parsing your first JSON Lines document
 
-This walks you from nothing to a working parse, then through one
-option and one error. Follow it in order; each step builds on the
-last. When you finish you will have installed the plugin, parsed a
-struct and a tuple, switched on an option, and handled a parse error.
+This is a learning-oriented walkthrough. You start with nothing and end
+with a program that reads a JSON Lines document, survives a malformed
+record, and knows exactly which line was to blame. Follow it top to
+bottom; every step builds on the previous one.
 
-For a recipe-style index of individual tasks, see the
-[how-to guide](guide.md). For exhaustive signatures and the full
-syntax, see the [reference](reference.md). For how it all works, see
-[concepts](concepts.md).
+If you only want the API surface, read [`reference.md`](reference.md).
+If you have a specific problem to solve, read [`guide.md`](guide.md). To
+understand *why* it works the way it does, read
+[`concepts.md`](concepts.md).
 
-## 1. Install
+## What you are building
 
-`@tabnas/zon` is a grammar plugin: it has no parser of its own. It runs
-on the Tabnas engine, with the relaxed-JSON grammar from
-`@tabnas/jsonic` underneath. Install all three:
+[JSON Lines](https://jsonlines.org) (JSONL, also called NDJSON) is the
+format log pipelines, data exports, and streaming APIs use: one complete
+JSON value per line, newline-separated. It is popular because a file can
+be appended to, split, and processed line by line without parsing the
+whole thing.
+
+```jsonl
+{"event":"login","user":"alice","ok":true}
+{"event":"upload","user":"bob","bytes":10240}
+{"event":"logout","user":"alice"}
+```
+
+`@tabnas/jsonl` turns that text into an array of values — one entry per
+line, in order.
+
+## Step 1 — Install
 
 ```bash
-npm install @tabnas/parser @tabnas/jsonic @tabnas/zon
+npm install @tabnas/parser @tabnas/json @tabnas/jsonl
 ```
 
-`@tabnas/parser` (>= 2) and `@tabnas/jsonic` (>= 2) are peer
-dependencies.
+Three packages, because this one is a grammar plugin rather than a
+standalone parser: `@tabnas/parser` is the engine, `@tabnas/json`
+supplies the strict-JSON grammar for the *content* of a record, and
+`@tabnas/jsonl` adds the line structure on top. Both of the first two
+are peer dependencies. Node >= 24.
 
-## 2. Build a parser
+## Step 2 — Parse a document
 
-Create a Tabnas engine, layer the jsonic grammar onto it, then layer
-the ZON plugin on top. The result is a reusable parser instance:
+Everything you need for the common case is one function, `parse`. Give
+it the whole document; get back an array of the per-line values.
 
 ```js
-import { Tabnas } from '@tabnas/parser'
-import { jsonic } from '@tabnas/jsonic'
-import { Zon } from '@tabnas/zon'
+const { parse } = require('@tabnas/jsonl')
 
-const j = new Tabnas().use(jsonic).use(Zon)
-
-j.parse('.{ .name = "Alice", .age = 30 }') // => { name: 'Alice', age: 30 }
+const rows = parse('{"user":"alice"}\n{"user":"bob"}')
+rows         // => [{ user: 'alice' }, { user: 'bob' }]
+rows.length  // => 2
+rows[1].user // => 'bob'
 ```
 
-You wrote Zig anonymous-struct syntax — `.{ ... }` to open, `.field`
-for each key, `=` to assign — and got back a plain object. That is the
-point: the plugin teaches the engine to read ZON.
+`parse` is also the default export, so in an ES module you can write
+`import parse from '@tabnas/jsonl'`.
 
-## 3. Parse a tuple
-
-The same `.{ ... }` opener also makes tuples. When the brace is *not*
-immediately followed by `.field =`, the values inside become an array:
+Note the result is always an array, even for a single record. A JSONL
+document is a *sequence*; one line is a sequence of one.
 
 ```js
-import { Tabnas } from '@tabnas/parser'
-import { jsonic } from '@tabnas/jsonic'
-import { Zon } from '@tabnas/zon'
+const { parse } = require('@tabnas/jsonl')
 
-const j = new Tabnas().use(jsonic).use(Zon)
-
-j.parse('.{ 1, 2, 3 }')      // => [1, 2, 3]
-j.parse('.{ "a", "b" }')     // => ['a', 'b']
+parse('{"user":"alice"}') // => [{ user: 'alice' }]
 ```
 
-The plugin decides struct-vs-tuple by peeking past the opening brace,
-so you never have to mark which one you mean — just write it.
+## Step 3 — Any JSON value is a record
 
-## 4. Nest and mix
-
-Structs and tuples nest freely, and a struct can hold both:
+The JSON Lines format allows any JSON value on a line, not just objects.
+Records do not have to share a shape, and repeated keys across lines do
+not merge — each line is parsed independently.
 
 ```js
-import { Tabnas } from '@tabnas/parser'
-import { jsonic } from '@tabnas/jsonic'
-import { Zon } from '@tabnas/zon'
+const { parse } = require('@tabnas/jsonl')
 
-const j = new Tabnas().use(jsonic).use(Zon)
-
-j.parse('.{ .xs = .{ 1, 2, 3 }, .y = .{ .z = true } }') // => { xs: [1, 2, 3], y: { z: true } }
+parse('1\n"two"\n[3,4]\ntrue\nnull') // => [1, 'two', [3, 4], true, null]
+parse('{"a":1}\n{"a":2}')            // => [{ a: 1 }, { a: 2 }]
 ```
 
-This is the shape of a real `build.zig.zon` manifest: named fields,
-some holding nested structs, some holding tuple-style path lists.
-
-## 5. Turn on an option
-
-The plugin is configured through its second `use()` argument. For
-example, a Zig char literal like `'A'` is a one-character string by
-default; set `charAsNumber: true` to get its code point instead:
+Nesting inside a record is ordinary JSON, to any depth:
 
 ```js
-import { Tabnas } from '@tabnas/parser'
-import { jsonic } from '@tabnas/jsonic'
-import { Zon } from '@tabnas/zon'
+const { parse } = require('@tabnas/jsonl')
 
-const j = new Tabnas().use(jsonic).use(Zon, { charAsNumber: true })
-
-j.parse("'A'") // => 65
+parse('{"a":{"b":{"c":[1,2,3]}}}') // => [{ a: { b: { c: [1, 2, 3] } } }]
 ```
 
-There are only two options, `charAsNumber` and `enumTag`; the
-[reference](reference.md#options) lists both with their defaults.
+## Step 4 — Meet the separator
 
-## 6. Catch an error
-
-ZON is not a superset of JSON. A bare `{` is not a valid opener — the
-plugin removes it on purpose — so parsing one throws:
+Real files are untidy. The newline is the record separator, and the
+parser handles the usual variations without being asked:
 
 ```js
-import { Tabnas } from '@tabnas/parser'
-import { jsonic } from '@tabnas/jsonic'
-import { Zon } from '@tabnas/zon'
+const { parse } = require('@tabnas/jsonl')
 
-const j = new Tabnas().use(jsonic).use(Zon)
+// A trailing newline is conventional and adds no record.
+parse('{"a":1}\n{"b":2}\n')   // => [{ a: 1 }, { b: 2 }]
+
+// Blank lines between records are ignored.
+parse('{"a":1}\n\n\n{"b":2}') // => [{ a: 1 }, { b: 2 }]
+
+// A Windows line ending is one newline, not two.
+parse('{"a":1}\r\n{"b":2}')   // => [{ a: 1 }, { b: 2 }]
+
+// Spaces and tabs around a record are insignificant, as in JSON.
+parse('  {"a":1}  \n\t{"b":2}') // => [{ a: 1 }, { b: 2 }]
+```
+
+## Step 5 — See the one-record-per-line rule bite
+
+This is the difference between JSON Lines and JSON. In a `.json` file
+you may spread a value over as many lines as you like. In a `.jsonl`
+file you may not: the line *is* the record boundary, which is what lets
+a consumer split the file on newlines without understanding JSON.
+
+So this fails:
+
+```js
+const { parse } = require('@tabnas/jsonl')
+
+let failed = false
+try {
+  parse('{"a":1}\n{"b":\n2}')
+} catch (err) {
+  failed = true
+}
+failed // => true
+```
+
+and the identical data on one line succeeds:
+
+```js
+const { parse } = require('@tabnas/jsonl')
+
+parse('{"a":1}\n{"b":2}') // => [{ a: 1 }, { b: 2 }]
+```
+
+Records must also be *separated* by that newline. Neither adjacency nor
+a comma will do — a JSONL document is not a JSON array:
+
+```js
+const { parse } = require('@tabnas/jsonl')
+
+const bad = (src) => { try { parse(src); return false } catch (e) { return true } }
+
+bad('{"a":1}{"b":2}')  // => true
+bad('{"a":1} {"b":2}') // => true
+bad('{"a":1},{"b":2}') // => true
+```
+
+## Step 6 — Handle an error, and find the line
+
+An invalid document throws a `TabnasError`. Its `lineNumber` is the line
+of the offending record, which is the fact you actually need when a
+large export has one bad row:
+
+```js
+const { parse, TabnasError } = require('@tabnas/jsonl')
+
+const src = ['{"i":1}', '{"i":2}', '{"i":}', '{"i":4}'].join('\n')
+
+let report
+try {
+  parse(src)
+} catch (err) {
+  report = err instanceof TabnasError ? 'line ' + err.lineNumber + ': ' + err.code : 'other'
+}
+report // => 'line 3: unexpected'
+```
+
+`TabnasError` is also exported as `JsonlError` if you prefer that name.
+Alongside `code` and `lineNumber` it carries `columnNumber` and a
+human-readable, source-pointing `message`.
+
+Because a record's content is strict JSON, the things JSON rejects are
+rejected here too — per record, on the line where they appear:
+
+```js
+const { parse } = require('@tabnas/jsonl')
+
+const bad = (src) => { try { parse(src); return false } catch (e) { return true } }
+
+bad('{a:1}')       // => true
+bad("{'a':1}")     // => true
+bad('{"a":1,}')    // => true
+bad('{"a":01}')    // => true
+bad('{"a":1} // c') // => true
+```
+
+## Step 7 — Know the empty-document boundary
+
+An empty string throws. That is inherited from `@tabnas/json`, which
+mirrors `JSON.parse('')`. A document that contains only blank lines is a
+different thing: it holds zero records, and parses to an empty array.
+
+```js
+const { parse } = require('@tabnas/jsonl')
 
 let threw = false
 try {
-  j.parse('{ a = 1 }') // not ZON: bare { is rejected
-} catch (e) {
+  parse('')
+} catch (err) {
   threw = true
 }
-threw // => true
+threw       // => true
+parse('\n') // => []
 ```
 
-The thrown error is the engine's standard parse error, with a code,
-a source location, and a formatted message you can show a user.
+If an empty file is legal input in your program, guard it at the call
+site — one line:
+
+```js
+const { parse } = require('@tabnas/jsonl')
+
+const parseDoc = (src) => ('' === src.trim() ? [] : parse(src))
+
+parseDoc('')     // => []
+parseDoc('1\n2') // => [1, 2]
+```
+
+## Step 8 — Build your own parser instance
+
+`parse` uses one shared, lazily-built engine. When you want your own —
+to hold engine options, or just to keep it explicit — call `make`:
+
+```js
+const { make } = require('@tabnas/jsonl')
+
+const p = make()
+p.parse('{"a":1}\n{"b":2}') // => [{ a: 1 }, { b: 2 }]
+p.parse('{"c":3}')          // => [{ c: 3 }]
+```
+
+An instance is reusable and holds no state between parses. Building one
+compiles the grammar, so build it once and parse many times.
+
+## Step 9 — See the layering underneath
+
+`make` is a convenience for a composition you can write yourself, and
+the order carries meaning:
+
+```js
+const { Tabnas } = require('@tabnas/parser')
+const { json } = require('@tabnas/json')
+const { jsonl } = require('@tabnas/jsonl')
+
+const tn = new Tabnas().use(json).use(jsonl)
+tn.parse('{"a":1}\n{"b":2}') // => [{ a: 1 }, { b: 2 }]
+```
+
+The strict-JSON grammar goes on first; JSON Lines is a thin layer over
+it. Reverse the two and the JSONL rules would be filtered straight back
+out, so the plugin checks and reports it instead:
+
+```js
+const { Tabnas } = require('@tabnas/parser')
+const { jsonl } = require('@tabnas/jsonl')
+
+let message
+try {
+  new Tabnas().use(jsonl)
+} catch (err) {
+  message = err.message.includes('strict-JSON grammar must be installed first')
+}
+message // => true
+```
+
+[`concepts.md`](concepts.md) explains what that layer actually consists
+of — it is smaller than you would guess.
 
 ## Where to go next
 
-- [How-to guide](guide.md) — focused recipes for individual tasks.
-- [Reference](reference.md) — the public API, every option, the full
-  ZON syntax accepted.
-- [Concepts](concepts.md) — how the plugin reshapes the engine, and
-  why.
+- [`guide.md`](guide.md) — recipes: streaming a large file, skipping bad
+  records, writing JSONL back out, testing parsed records.
+- [`reference.md`](reference.md) — the exact API, error codes, and
+  accepted syntax.
+- [`concepts.md`](concepts.md) — why one lexer change is the whole
+  format.

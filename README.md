@@ -1,118 +1,253 @@
-# @tabnas/zon
+# @tabnas/jsonl
 
-<!-- tabnas-badges -->
-[![npm](https://tabnas.github.io/status/badges/zon-npm.svg)](https://www.npmjs.com/package/@tabnas/zon)
-[![CI](https://github.com/tabnas/zon/actions/workflows/ci.yml/badge.svg)](https://github.com/tabnas/zon/actions/workflows/ci.yml)
-[![go](https://tabnas.github.io/status/badges/zon-go.svg)](https://pkg.go.dev/github.com/tabnas/zon/go)
-[![tabnas standard](https://tabnas.github.io/status/badges/zon-standard.svg)](https://tabnas.github.io/status/)
-<!-- /tabnas-badges -->
+A **JSON Lines** grammar plugin for the
+[tabnas](https://github.com/tabnas/parser) parsing engine.
 
-A grammar plugin that teaches the [Tabnas](https://github.com/tabnas/parser)
-parser to read [Zig Object Notation (ZON)](https://ziglang.org/documentation/master/#ZON) —
-the anonymous-struct data format used for `build.zig.zon` manifests.
-Available for both TypeScript and Go, built on the same grammar.
+[JSON Lines](https://jsonlines.org) (JSONL, also called NDJSON) is the
+format log pipelines and data exports speak: **one complete JSON value per
+line**, newline-separated, no enclosing array.
 
-ZON looks like this:
-
-```zon
-.{
-    .name = "example",
-    .version = "0.0.1",
-    .dependencies = .{
-        .foo = .{ .url = "https://example.com/foo.tar.gz", .hash = "1220deadbeef" },
-    },
-    .paths = .{ "build.zig", "src" },
-}
 ```
+{"name":"alice","age":30}
+{"name":"bob","age":25}
+```
+
+```js
+const { parse } = require('@tabnas/jsonl')
+
+const rows = parse('{"name":"alice"}\n{"name":"bob"}')
+rows   // => [{name:'alice'},{name:'bob'}]
+```
+
+A document parses to an **array of the per-line values**, whatever those
+values are — JSON Lines permits any JSON value on a line, not only objects:
+
+```js
+const { parse } = require('@tabnas/jsonl')
+
+const values = parse('{"a":1}\n[1,2]\n"text"\n42\ntrue\nnull')
+values   // => [{a:1},[1,2],'text',42,true,null]
+```
+
+## The whole plugin is one lexer change and two rules
+
+This package exists as much to be *read* as to be used. It is a worked
+example of how far a tabnas grammar can be extended without touching the
+engine or writing a lexer.
+
+It adds **no lexer matchers**, and it re-uses the entire strict-JSON rule
+set — `val`, `map`, `list`, `pair`, `elem` — from
+[`@tabnas/json`](https://github.com/tabnas/json), unmodified. Everything
+that makes a record's *content* strict JSON is inherited, not restated.
+
+**Step one — make the newline visible to the parser.** The engine's lexer
+always emits a `#LN` token, but the parser skips whatever is listed in the
+`IGNORE` token set, which by default is `#SP`, `#LN`, `#CM`. Removing
+`#LN` hands newlines to the grammar:
+
+```js ignore
+tokenSet: { IGNORE: ['#SP', null, '#CM'] }
+```
+
+**Step two — add two rules.** `jsonl` is the document; `record` is one
+line, and it parses that line by pushing the inherited `val` rule:
+
+```js ignore
+jsonl: {
+  open: [
+    { s: '#ZZ',     a: '@array$' },              // no records
+    { s: '#LN #ZZ', a: '@array$' },              // only blank lines
+    { s: '#LN',     p: 'record', a: '@array$' }, // leading blank line
+    {               p: 'record', a: '@array$' }, // the usual case
+  ],
+  close: [ {} ],
+},
+
+record: {
+  open: [
+    { s: '#LN #ZZ' },                            // trailing separators
+    { s: '#LN', r: 'record' },                   // a spare separator
+    { p: 'val' },                                // one strict-JSON value
+  ],
+  close: [
+    { s: '#LN #ZZ', a: '@push$' },               // trailing newline
+    { s: '#LN', r: 'record', a: '@push$' },      // next record
+    { s: '#ZZ', a: '@push$' },                   // end of input
+  ],
+},
+```
+
+That is the entire grammar. `@array$` and `@push$` are the engine's
+native-value builtins, so it stays function-free and serializable.
+
+### What step one buys you for free
+
+Making the separator significant does more than let `record` match it.
+Once `#LN` is no longer invisible, a newline **inside** a value stops being
+skipped — so a JSON value split across lines no longer parses:
+
+```js
+const { parse } = require('@tabnas/jsonl')
+
+// The same object, on one line and split across two.
+parse('{"a":1,"b":2}')          // => [{a:1,b:2}]
+
+let split = false
+try { parse('{"a":1,\n"b":2}') } catch (e) { split = true }
+split                            // => true
+```
+
+That is exactly the JSON Lines rule that each record occupies one line —
+and it appears nowhere in the grammar above. It falls out of the lexer
+change. Pretty-printed JSON is, correctly, not JSON Lines.
+
+## What it accepts
+
+Records are separated by a newline, and only by a newline. CRLF and runs of
+blank lines cost the grammar nothing: the engine's line matcher scans a run
+of line characters into a single token. (A blank line containing a space is
+the one case that does not collapse that way, which is what the spare-
+separator alternate above is for.)
+
+```js
+const { parse } = require('@tabnas/jsonl')
+
+// A trailing newline is conventional and adds no record.
+parse('{"a":1}\n')            // => [{a:1}]
+
+// CRLF counts as one newline.
+parse('{"a":1}\r\n{"b":2}')   // => [{a:1},{b:2}]
+
+// A run of blank lines is one separator.
+parse('{"a":1}\n\n\n{"b":2}') // => [{a:1},{b:2}]
+
+// Spaces and tabs around a record are insignificant, as in JSON.
+parse('  {"a":1}  ')          // => [{a:1}]
+
+// A document of only separators holds zero records.
+parse('\n')                   // => []
+```
+
+Adjacency, spaces and commas are **not** separators — a JSON Lines
+document is not a JSON array:
+
+```js
+const { parse } = require('@tabnas/jsonl')
+
+const bad = ['{"a":1} {"b":2}', '{"a":1}{"b":2}', '{"a":1},{"b":2}']
+const rejected = bad.filter((src) => {
+  try { parse(src); return false } catch { return true }
+})
+rejected.length   // => 3
+```
+
+Each record's content is strict, standard JSON, inherited from
+`@tabnas/json`. Unquoted keys, single quotes, comments, trailing commas,
+and non-standard numbers (`01`, `+1`, `.5`, `1.`, `0x1F`) are all rejected,
+per line.
 
 ## Install
 
-```bash
-# TypeScript / JavaScript
-npm install @tabnas/parser @tabnas/jsonic @tabnas/zon
-
-# Go
-go get github.com/tabnas/zon/go@latest
+```sh
+npm install @tabnas/jsonl @tabnas/json @tabnas/parser
 ```
 
-## One tiny example
-
-**TypeScript** — the plugin layers onto a Tabnas engine:
+`@tabnas/json` and `@tabnas/parser` are peer dependencies: the plugin
+layers on the first and runs on the second.
 
 ```js
-import { Tabnas } from '@tabnas/parser'
-import { jsonic } from '@tabnas/jsonic'
-import { Zon } from '@tabnas/zon'
+const { Tabnas } = require('@tabnas/parser')
+const { json } = require('@tabnas/json')
+const { jsonl } = require('@tabnas/jsonl')
 
-const j = new Tabnas().use(jsonic).use(Zon)
-
-j.parse('.{ .name = "Alice", .age = 30 }') // => { name: 'Alice', age: 30 }
-j.parse('.{ 1, 2, 3 }')                     // => [1, 2, 3]
+const tn = new Tabnas().use(json).use(jsonl)
+tn.parse('1\n2\n3')   // => [1,2,3]
 ```
 
-**Go** — `tabnaszon.Parse` is the one-call entry point:
+Order matters. `@tabnas/json` restricts the active grammar to its own
+alternates, so applying it *after* this plugin would filter these rules
+back out. Installing on a bare engine reports that directly rather than
+failing obscurely later:
 
-```go
-import tabnaszon "github.com/tabnas/zon/go"
+```js
+const { Tabnas } = require('@tabnas/parser')
+const { jsonl } = require('@tabnas/jsonl')
 
-result, _ := tabnaszon.Parse(`.{ .name = "Alice", .age = 30 }`)
-// map[string]any{"name": "Alice", "age": float64(30)}
+let msg = ''
+try { new Tabnas().use(jsonl) } catch (e) { msg = e.message }
+msg.includes('strict-JSON grammar must be installed first')   // => true
 ```
 
-## Conformance
+The `make()` and `parse()` helpers do this for you.
 
-`@tabnas/zon` accepts exactly the documents **ziglang/zig 0.16.0** accepts,
-and produces the same value for each. The reference implementation is the
-judge, not this repo: `scripts/fetch-zigzon.sh` downloads a pinned zig 0.16.0,
-builds a small oracle around the compiler's own `std.zig.Ast` + `std.zig.ZonGen`,
-and has it rule on every ZON document in the zig tree.
+## Errors
 
-| Corpus | Documents | Accepted correctly | Rejected correctly |
-|---|---|---|---|
-| Every `.zon` file in the zig tree, plus every snippet in `lib/std/zon/parse.zig` | 222 | 178 / 178 | 44 / 44 |
-| Leniency probes (`test/strictness/inputs.txt`), judged by the same oracle | 117 | 45 / 45 | 72 / 72 |
+A malformed record throws a `TabnasError` reporting the line it is on, so
+a bad line in a large file is findable:
 
-Identical in both runtimes. Two documented deviations, both about
-representing a value that Zig resolves against a target type:
+```js
+const { parse } = require('@tabnas/jsonl')
 
-- an integer literal too large for an exact IEEE-754 double is returned as a
-  `bigint` (TypeScript) / `*big.Int` (Go) rather than silently rounded;
-- `.{}` parses as the empty **list**, since an empty anonymous literal is both
-  an empty struct and an empty tuple until a type says otherwise.
+let line = 0
+try { parse('{"a":1}\n{"b":}\n{"c":3}') } catch (e) { line = e.lineNumber }
+line   // => 2
+```
 
-See [`AGENTS.md`](AGENTS.md#conformance-claim) for the full details.
+Parsing is fail-fast: the first bad record ends the parse. Per-record
+error recovery would need the engine's multi-error support, sketched in the
+parser's [LSP feasibility
+report](https://github.com/tabnas/parser/blob/main/ts/doc/lsp-feasibility.md).
+
+## Two boundaries worth knowing
+
+**Empty source throws; a blank document does not.** `parse('')` raises an
+error, inherited from `@tabnas/json` (`lex.empty: false`) and matching
+`JSON.parse('')`. A document containing only blank lines is a different
+case: it holds zero records and yields `[]`. If you are reading files that
+may be empty, guard the call:
+
+```js
+const { parse } = require('@tabnas/jsonl')
+
+const parseFile = (src) => ('' === src.trim() ? [] : parse(src))
+parseFile('')          // => []
+parseFile('{"a":1}')   // => [{a:1}]
+```
+
+**Objects have a null prototype.** The engine builds maps with no
+prototype so a `__proto__` key stays ordinary data. Strict deep-equality
+against a plain object literal will therefore report a difference; compare
+after a JSON round-trip.
+
+```js
+const { parse } = require('@tabnas/jsonl')
+
+Object.getPrototypeOf(parse('{"a":1}')[0])   // => null
+```
+
+## Runtimes
+
+| Runtime | Package / module | Start here |
+|---|---|---|
+| **TypeScript / JavaScript** — canonical | `@tabnas/jsonl` (npm) | [`ts/README.md`](ts/README.md) |
+| **Go** — port that follows the TS plugin | `github.com/tabnas/jsonl/go` | [`go/README.md`](go/README.md) |
+
+Both runtimes are held to the same behaviour by the shared
+[`test/spec/*.tsv`](test/spec/) fixtures, which each side discovers and
+runs automatically.
 
 ## Documentation
 
-Full documentation follows the [Diátaxis](https://diataxis.fr)
-framework — one file per quadrant, per language:
+- **Learning** — [TypeScript tutorial](ts/doc/tutorial.md) ·
+  [Go tutorial](go/doc/tutorial.md)
+- **Recipes** — [TypeScript guide](ts/doc/guide.md) ·
+  [Go guide](go/doc/guide.md)
+- **Reference** — [TypeScript](ts/doc/reference.md) · [Go](go/doc/reference.md)
+- **Explanation** — [TypeScript concepts](ts/doc/concepts.md) ·
+  [Go concepts](go/doc/concepts.md)
 
-| | TypeScript | Go |
-|---|---|---|
-| **Tutorial** (learning) | [ts/doc/tutorial.md](ts/doc/tutorial.md) | [go/doc/tutorial.md](go/doc/tutorial.md) |
-| **How-to guide** (tasks) | [ts/doc/guide.md](ts/doc/guide.md) | [go/doc/guide.md](go/doc/guide.md) |
-| **Reference** (API + options + syntax) | [ts/doc/reference.md](ts/doc/reference.md) | [go/doc/reference.md](go/doc/reference.md) |
-| **Concepts** (explanation) | [ts/doc/concepts.md](ts/doc/concepts.md) | [go/doc/concepts.md](go/doc/concepts.md) |
-
-Per-language hubs: [`ts/README.md`](ts/README.md),
-[`go/README.md`](go/README.md).
-
-## Grammar diagram
-
-The grammar is defined once in the top-level
-[`zon-grammar.jsonic`](zon-grammar.jsonic) and embedded into both
-implementations — TypeScript ([`ts/src/zon.ts`](ts/src/zon.ts)) and Go
-([`go/zon.go`](go/zon.go)) — by [`ts/embed-grammar.js`](ts/embed-grammar.js)
-during the TypeScript build. Edit the grammar there, not in the
-generated sources.
-
-As a railroad/syntax diagram, generated from the live grammar with
-[`@tabnas/railroad`](https://github.com/tabnas/railroad):
-
-![zon grammar railroad diagram](ts/doc/grammar.svg)
-
-ASCII version: [`ts/doc/grammar.txt`](ts/doc/grammar.txt).
+Working on this repo? Start with [`AGENTS.md`](AGENTS.md).
 
 ## License
 
-MIT. Copyright (c) Richard Rodger.
+MIT. Copyright (c) 2026 tabnas.

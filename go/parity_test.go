@@ -1,6 +1,6 @@
-// Copyright (c) 2025 Richard Rodger and other contributors, MIT License
+// Copyright (c) 2026 Richard Rodger and other contributors, MIT License
 
-package tabnaszon
+package tabnasjsonl
 
 // parity_test.go — cross-runtime conformance, driven by the shared
 // `test/spec/*.tsv` fixtures at the repo root (see ../test/AGENTS.md), the
@@ -17,8 +17,6 @@ import (
 	"reflect"
 	"strings"
 	"testing"
-
-	jsonic "github.com/tabnas/jsonic/go"
 )
 
 type specRow struct {
@@ -145,18 +143,16 @@ func jsonRound(t *testing.T, v any) any {
 func runSpecFile(t *testing.T, path string) {
 	for _, row := range loadSpec(t, path) {
 		t.Run(specLabel(row.input), func(t *testing.T) {
-			opts := map[string]any{}
+			// The opts column is part of the shared fixture format, but this
+			// plugin takes no options. Rather than silently ignore a value,
+			// say so — a fixture author who sets one deserves to be told it
+			// would have had no effect.
 			if strings.TrimSpace(row.opts) != "" {
-				if err := json.Unmarshal([]byte(row.opts), &opts); err != nil {
-					t.Fatalf("%s:%d: bad opts JSON %q: %v", row.file, row.lineNo, row.opts, err)
-				}
+				t.Fatalf("%s:%d: opts %q given, but @tabnas/jsonl has no options",
+					row.file, row.lineNo, row.opts)
 			}
 
-			j := jsonic.Make()
-			if err := j.UseDefaults(Zon, Defaults, opts); err != nil {
-				t.Fatalf("plugin init: %v", err)
-			}
-			got, err := j.Parse(row.input)
+			got, err := Make().Parse(row.input)
 
 			if strings.HasPrefix(row.expected, "ERROR") {
 				want := strings.TrimPrefix(strings.TrimPrefix(row.expected, "ERROR"), ":")
