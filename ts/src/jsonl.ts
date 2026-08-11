@@ -37,7 +37,7 @@ import { json } from '@tabnas/json'
 // VERSION is this package's version. It MUST equal package.json "version":
 // the release orchestrator rewrites both, and test/version.test.ts fails the
 // build if they drift. Mirrors `const VERSION` in go/jsonl.go.
-export const VERSION = '0.1.0'
+export const VERSION = '0.1.1'
 
 // JSONL options, applied over the strict-JSON base.
 //
@@ -190,8 +190,8 @@ function assertStrictJsonBase(tn: Tabnas): void {
   if (!rules || !rules.val) {
     throw new Error(
       '@tabnas/jsonl: the strict-JSON grammar must be installed first — ' +
-        "use `new Tabnas().use(json).use(jsonl)`, or call this package's " +
-        '`make()`.',
+      "use `new Tabnas().use(json).use(jsonl)`, or call this package's " +
+      '`make()`.',
     )
   }
 
@@ -204,9 +204,9 @@ function assertStrictJsonBase(tn: Tabnas): void {
   if (0 < relaxed.length) {
     throw new Error(
       '@tabnas/jsonl: the installed value grammar is not strict JSON (' +
-        relaxed.join(', ') +
-        '), so records would not be standard JSON. Layer this plugin on ' +
-        '`@tabnas/json`, not on a relaxed grammar such as `@tabnas/jsonic`.',
+      relaxed.join(', ') +
+      '), so records would not be standard JSON. Layer this plugin on ' +
+      '`@tabnas/json`, not on a relaxed grammar such as `@tabnas/jsonic`.',
     )
   }
 }
