@@ -37,7 +37,7 @@ import { json } from '@tabnas/json'
 // VERSION is this package's version. It MUST equal package.json "version":
 // the release orchestrator rewrites both, and test/version.test.ts fails the
 // build if they drift. Mirrors `const VERSION` in go/jsonl.go.
-export const VERSION = '0.1.2'
+export const VERSION = '0.1.3'
 
 // JSONL options, applied over the strict-JSON base.
 //

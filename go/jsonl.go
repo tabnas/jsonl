@@ -45,7 +45,7 @@ import (
 // VERSION is this module's version. It MUST equal ts/package.json
 // "version": the release orchestrator rewrites both, and
 // TestVersionMatchesPackageJSON fails the build if they drift.
-const VERSION = "0.1.2"
+const VERSION = "0.1.3"
 
 // JsonlError is the error type returned by a failed parse — an alias of
 // the engine's *tabnas.TabnasError (with Code / Row / Col / Hint fields
