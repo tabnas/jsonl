@@ -1,0 +1,16 @@
+{
+  "$schema": "https://tabnas.dev/schema/plugin.schema.json",
+  "name": "@tabnas/jsonl",
+  "go": "github.com/tabnas/jsonl/go",
+  "description": "JSON Lines parsing for the tabnas engine.",
+  "base": "@tabnas/json",
+  "engine": "@tabnas/parser",
+  "extensions": [
+    ".jsonl"
+  ],
+  "specDir": "test/spec",
+  "errorCodes": [],
+  "docs": "https://tabnas.dev/docs/packages",
+  "repository": "https://github.com/tabnas/jsonl",
+  "versionSource": "ts/package.json"
+}
