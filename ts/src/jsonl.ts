@@ -142,13 +142,13 @@ export function registerJsonlGrammar(tn: Tabnas): void {
         close: [
           // A trailing separator at end of input: the file ends with a
           // newline, which is conventional and adds no record.
-          { s: '#LN #ZZ', a: '@push$', g: 'jsonl' },
+          { s: '#LN #ZZ', a: '@push$', g: 'jsonl,end' },
 
           // A separator with more to come: iterate to the next record.
-          { s: '#LN', r: 'record', a: '@push$', g: 'jsonl' },
+          { s: '#LN', r: 'record', a: '@push$', g: 'jsonl,end' },
 
           // End of input with no trailing newline.
-          { s: '#ZZ', a: '@push$', g: 'jsonl' },
+          { s: '#ZZ', a: '@push$', g: 'jsonl,end' },
         ],
       },
     },
