@@ -8,6 +8,15 @@
   "extensions": [
     ".jsonl"
   ],
+  "languageId": "jsonl",
+  "pluginKind": "grammar",
+  "grammarKind": "closure",
+  "lexStream": "clean",
+  "syncGroups": [
+    "end",
+    "comma",
+    "close"
+  ],
   "specDir": "test/spec",
   "errorCodes": [],
   "docs": "https://tabnas.dev/docs/packages",

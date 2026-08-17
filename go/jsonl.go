@@ -160,13 +160,13 @@ func RegisterJsonlGrammar(j *tabnas.Tabnas) error {
 			Close: []*tabnas.GrammarAltSpec{
 				// A trailing separator at end of input: the file ends with
 				// a newline, which is conventional and adds no record.
-				{S: "#LN #ZZ", A: "@push$", G: "jsonl"},
+				{S: "#LN #ZZ", A: "@push$", G: "jsonl,end"},
 
 				// A separator with more to come: iterate to the next record.
-				{S: "#LN", R: "record", A: "@push$", G: "jsonl"},
+				{S: "#LN", R: "record", A: "@push$", G: "jsonl,end"},
 
 				// End of input with no trailing newline.
-				{S: "#ZZ", A: "@push$", G: "jsonl"},
+				{S: "#ZZ", A: "@push$", G: "jsonl,end"},
 			},
 		},
 	}
