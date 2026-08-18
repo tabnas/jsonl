@@ -1,5 +1,5 @@
-github.com/tabnas/json/go v0.5.3 h1:1/zKOryABUqfkJoCQ83Zoi1XN7EEbwLBZ20y3neZRH0=
-github.com/tabnas/json/go v0.5.3/go.mod h1:Oh7X42AAPSXwVHKh1wqxB67/oPucHJ2au2wmBLc9M10=
+github.com/tabnas/json/go v0.5.4 h1:u2qVHlBKww+hdMunEwoTXzzNqJXTZyieyqgXF5LeFfU=
+github.com/tabnas/json/go v0.5.4/go.mod h1:6/V7KzQxwF0IeK33FQ7rqEomMkDGqoIvsKT1+8xQsy4=
 github.com/tabnas/parser/go v0.8.10 h1:5RPYqyqIy9TOfEgeERQnsJ5AYQMf2FZF2VcUDVt6CQE=
 github.com/tabnas/parser/go v0.8.10/go.mod h1:WrlfEVyZ1QjEIowWiyEu3K1iHj7wxuPut5zoH9Trehk=
 github.com/tabnas/support/go v0.3.1 h1:xle/JiJO+vsiAUQqzR9KUh6rO4M4Tg9IHtL7d6DwkUc=
