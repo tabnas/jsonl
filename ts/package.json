@@ -1,6 +1,6 @@
 {
   "name": "@tabnas/jsonl",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "This plugin allows the [Tabnas](https://github.com/tabnas/parser) parsing engine to parse JSON Lines (JSONL / NDJSON): one standard-JSON value per line.",
   "main": "dist/jsonl.js",
   "type": "commonjs",
