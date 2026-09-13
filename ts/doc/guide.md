@@ -23,8 +23,8 @@ rows[1].id    // => 2
 ## Reuse one parser instance
 
 `parse` already reuses a single lazily-built engine, so repeated calls do
-not rebuild the grammar. When you want an explicit instance — to hold
-engine options, or to keep the dependency visible — build one with `make`
+not rebuild the grammar. When you want an explicit instance (to hold
+engine options, or to keep the dependency visible) build one with `make`
 and keep it:
 
 ```js
@@ -43,7 +43,7 @@ so do not construct one per parse.
 
 `parse` is a whole-document call: it holds the source string and the
 resulting array in memory. For a file too large for that, use the format
-the way it was designed — split on newlines and parse one line at a
+the way it was designed: split on newlines and parse one line at a
 time. Each line is itself a complete JSONL document of one record, so
 the same `parse` works, returning a one-element array:
 
@@ -112,7 +112,7 @@ check('{"a":1}\n"unterminated')    // => { line: 2, code: 'unterminated_string' 
 ```
 
 The line number counts source lines, so it points at the record as the
-user sees it in an editor — blank lines and all.
+user sees it in an editor, blank lines and all.
 
 ## Skip bad records instead of failing the document
 
@@ -241,7 +241,7 @@ tn.parse('{"a":1}\n{"b":2}') // => [{ a: 1 }, { b: 2 }]
 ```
 
 `new Tabnas({ plugins: [json, jsonl] })` is equivalent. The order is
-load-bearing: `@tabnas/json` narrows the parser to its own `json`-tagged
+what decides the result: `@tabnas/json` narrows the parser to its own `json`-tagged
 alternates, so applying it last would filter the JSONL alternates out
 again. Installing `jsonl` alone throws immediately rather than producing
 a confusing parse failure later:

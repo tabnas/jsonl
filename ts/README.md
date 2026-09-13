@@ -1,7 +1,7 @@
 # @tabnas/jsonl
 
 A [JSON Lines](https://jsonlines.org) (JSONL, also known as NDJSON)
-parser for TypeScript and JavaScript — the JSON Lines **grammar plugin**
+parser for TypeScript and JavaScript: the JSON Lines **grammar plugin**
 for the [`tabnas`](https://github.com/tabnas/parser) parsing engine,
 layered on the strict-JSON grammar from
 [`@tabnas/json`](https://github.com/tabnas/json).
@@ -45,7 +45,7 @@ parse('{"a":1}')             // => [{ a: 1 }]
 ## One record per line
 
 The newline is significant, so a JSON value split across lines is not a
-record — it is an error. This is the JSON Lines rule that makes a file
+record; it is an error. This is the JSON Lines rule that makes a file
 splittable by line, and this package enforces it:
 
 ```js
@@ -116,7 +116,7 @@ Parsed objects have a **null prototype** (`Object.create(null)`), so a
 `"__proto__"` key lands as ordinary data instead of poisoning a
 prototype. The visible cost: `obj.hasOwnProperty` is `undefined` (use
 `Object.hasOwn`), and `assert.deepStrictEqual` against a plain object
-literal fails — compare after `JSON.parse(JSON.stringify(value))`.
+literal fails; compare after `JSON.parse(JSON.stringify(value))`.
 
 ## Errors
 
@@ -157,10 +157,10 @@ parseDoc('1\n2')    // => [1, 2]
 
 Full [Diátaxis](https://diataxis.fr) docs:
 
-- [`doc/tutorial.md`](doc/tutorial.md) — learn it step by step.
-- [`doc/guide.md`](doc/guide.md) — task-focused recipes.
-- [`doc/reference.md`](doc/reference.md) — the exact API surface.
-- [`doc/concepts.md`](doc/concepts.md) — how it works and why.
+- [`doc/tutorial.md`](doc/tutorial.md). Learn it step by step.
+- [`doc/guide.md`](doc/guide.md). Task-focused recipes.
+- [`doc/reference.md`](doc/reference.md). The exact API surface.
+- [`doc/concepts.md`](doc/concepts.md). How it works and why.
 
 The Go port has the [equivalent docs](../go/doc/).
 
@@ -172,7 +172,7 @@ exactly two things:
 
 1. drops `#LN` from the engine's `IGNORE` token set, so a newline
    becomes a token the grammar can match;
-2. adds two rules — `jsonl` (the document) and `record` (one line).
+2. adds two rules: `jsonl` (the document) and `record` (one line).
 
 The one-record-per-line rule is nowhere in that grammar. It falls out of
 step 1: once newlines are no longer invisible, a value that spans one
