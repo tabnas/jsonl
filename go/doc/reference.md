@@ -92,7 +92,7 @@ if err := j.Use(tabnasjsonl.Jsonl); err != nil { /* ... */ }
 If the rule `val` is absent, it installs nothing and returns
 
 ```
-tabnasjsonl: the strict-JSON grammar must be installed first: call
+tabnasjsonl: the strict-JSON grammar must be installed first — call
 tabnasjson.Json(j, nil) before Jsonl(j, nil), or use Make()
 ```
 

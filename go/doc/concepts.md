@@ -171,7 +171,7 @@ plugin onto the same engine. Instead the missing-grammar case is
 reported:
 
 ```
-tabnasjsonl: the strict-JSON grammar must be installed first: call
+tabnasjsonl: the strict-JSON grammar must be installed first — call
 tabnasjson.Json(j, nil) before Jsonl(j, nil), or use Make()
 ```
 

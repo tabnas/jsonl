@@ -224,7 +224,7 @@ problem, rather than silently building a parser that does not work:
 ```go
 j := tabnas.Make()
 err := j.Use(tabnasjsonl.Jsonl)
-// err: tabnasjsonl: the strict-JSON grammar must be installed first: ...
+// err: tabnasjsonl: the strict-JSON grammar must be installed first — ...
 ```
 
 The order decides the result, and is not stylistic;

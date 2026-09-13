@@ -96,7 +96,7 @@ Installing it on an engine without the JSON grammar throws a plain
 `Error`:
 
 ```text
-@tabnas/jsonl: the strict-JSON grammar must be installed first:
+@tabnas/jsonl: the strict-JSON grammar must be installed first —
 use `new Tabnas().use(json).use(jsonl)`, or call this package's `make()`.
 ```
 
