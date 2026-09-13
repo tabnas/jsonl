@@ -33,7 +33,7 @@ npm install @tabnas/parser @tabnas/json @tabnas/jsonl
 ### `parse(src: string): any[]`
 
 Parses `src` as a JSON Lines document and returns an array holding one
-value per record, in document order. Uses a single, lazily-created
+value per record, in document order. Uses a single, lazily created
 default engine shared across calls (each parse builds its own context, so
 reuse is safe). Throws `TabnasError` on invalid input.
 

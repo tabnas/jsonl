@@ -180,7 +180,7 @@ it is a document that holds zero records.
 
 ## 8. Build your own parser instance
 
-`Parse` uses one shared, lazily-built instance. When you want to
+`Parse` uses one shared, lazily built instance. When you want to
 configure the parser, or simply hold your own, use `Make`:
 
 ```go

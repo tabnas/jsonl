@@ -221,7 +221,7 @@ parseDoc('1\n2') // => [1, 2]
 
 ## Step 8: Build your own parser instance
 
-`parse` uses one shared, lazily-built engine. When you want your own (to
+`parse` uses one shared, lazily built engine. When you want your own (to
 hold engine options, or just to keep it explicit) call `make`:
 
 ```js

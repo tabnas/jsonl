@@ -63,7 +63,7 @@ record, in source order. A JSON object parses to a
 `map[string]any` instead), an array to `[]any`, and scalars to
 `float64` / `string` / `bool` / `nil`.
 
-`Parse` reuses one lazily-built instance, so repeated calls do not
+`Parse` reuses one lazily built instance, so repeated calls do not
 rebuild the engine, and it is safe for concurrent use. To configure the
 parser, build your own instance with `tabnasjsonl.Make(extra ...)`.
 
