@@ -70,7 +70,7 @@ doc, err := p.Parse("1\n2\n3")
 // doc: []any{float64(1), float64(2), float64(3)}
 ```
 
-`Make` panics only if installing the fixed grammar spec fails — a
+`Make` panics only if installing the fixed grammar spec fails: a
 programmer error in this package or its dependency, not reachable from
 caller input.
 
@@ -92,12 +92,12 @@ if err := j.Use(tabnasjsonl.Jsonl); err != nil { /* ... */ }
 If the rule `val` is absent, it installs nothing and returns
 
 ```
-tabnasjsonl: the strict-JSON grammar must be installed first — call
+tabnasjsonl: the strict-JSON grammar must be installed first: call
 tabnasjson.Json(j, nil) before Jsonl(j, nil), or use Make()
 ```
 
-The base must also be *strict*. A `val` rule alone is not enough — every
-JSON-family grammar has one — so the plugin reads the three lexer options
+The base must also be *strict*. A `val` rule alone is not enough (every
+JSON-family grammar has one) so the plugin reads the three lexer options
 that decide record content (`text.lex`, `comment.lex`, `string.chars`) and
 refuses a relaxed base, naming the ones that are wrong:
 
@@ -113,7 +113,7 @@ Installs only the two rules, via the engine's declarative grammar spec
 (`j.Grammar(&tabnas.GrammarSpec{V: 2, Rule: ..., RuleOrder: ...})`). It
 does **not** apply the option overrides, so the rules stay inert until
 the newline is a token the grammar can see and `jsonl` is the start rule
-— supply that yourself (see
+Supply that yourself (see
 [the guide](guide.md#install-the-rules-without-the-options)). Returns any
 error from the grammar spec.
 
@@ -123,7 +123,7 @@ engine's native-value `$`-builtins, so the spec is serializable.
 ### `const VERSION string`
 
 The module version string. It always equals the TS package's
-`ts/package.json` `"version"` — `version_test.go` fails the build if the
+`ts/package.json` `"version"`; `version_test.go` fails the build if the
 two drift.
 
 ### `type JsonlError = tabnas.TabnasError`
@@ -149,7 +149,7 @@ if errors.As(err, &je) {
 |---|---|---|
 | `Code` | `string` | Machine-readable error code (below). |
 | `Detail` | `string` | Human-readable detail message. |
-| `Row` | `int` | 1-based line number — the line of the offending record. |
+| `Row` | `int` | 1-based line number: the line of the offending record. |
 | `Col` | `int` | 1-based column number. |
 | `Pos` | `int` | 0-based character position in source. |
 | `Src` | `string` | Source fragment (token text) at the error. |
@@ -162,7 +162,7 @@ TypeScript port:
 
 | Code | When |
 |---|---|
-| `unexpected` | Any character or token no active rule alternative accepts — the catch-all. Covers a record split across lines, records not separated by a newline, and every relaxed-JSON form the strict base rejects. |
+| `unexpected` | Any character or token no active rule alternative accepts; the catch-all. Covers a record split across lines, records not separated by a newline, and every relaxed-JSON form the strict base rejects. |
 | `unterminated_string` | A string literal with no closing quote (`"abc`). |
 | `invalid_unicode` | A `\u` escape that is not four hex digits (`\uZZZZ`, `\u{41}`). |
 
@@ -172,7 +172,7 @@ TypeScript port:
 
 | JSON Lines | Go |
 |---|---|
-| Document | `[]any` — one entry per record |
+| Document | `[]any`, one entry per record |
 | Object | `*tabnas.OrderedMap` (`Keys []string`, `Vals map[string]any`, `Get`/`Has`/`Len`) |
 | Array | `[]any` |
 | String | `string` |
@@ -195,32 +195,32 @@ the newline, and only the newline.
 |---|---|
 | `{"a":1}` | 1 record |
 | `{"a":1}\n{"b":2}` | 2 records |
-| `{"a":1}\n` | 1 record — a trailing separator adds none |
-| `{"a":1}\r\n{"b":2}` | 2 records — CRLF is one newline |
-| `{"a":1}\n\n\n{"b":2}` | 2 records — blank lines are tolerated |
-| `\n{"a":1}\n\n{"b":2}\n` | 2 records — leading and trailing blank lines too |
-| `  {"a":1}  ` | 1 record — spaces and tabs around a record are insignificant |
-| `\n`, `\n\n`, `  \n  `, `   ` | 0 records — a document with no record content |
-| `""` (empty source) | **error** — see below |
-| `{"a":\n1}` | **error** — a value split across lines is not a record |
-| `{"a":1}{"b":2}` | **error** — adjacency is not a separator |
-| `{"a":1} {"b":2}` | **error** — a space is not a separator |
-| `{"a":1},{"b":2}` | **error** — a comma is not a separator; a document is not a JSON array |
+| `{"a":1}\n` | 1 record; a trailing separator adds none |
+| `{"a":1}\r\n{"b":2}` | 2 records; CRLF is one newline |
+| `{"a":1}\n\n\n{"b":2}` | 2 records; blank lines are tolerated |
+| `\n{"a":1}\n\n{"b":2}\n` | 2 records; leading and trailing blank lines too |
+| `  {"a":1}  ` | 1 record; spaces and tabs around a record are insignificant |
+| `\n`, `\n\n`, `  \n  `, `   ` | 0 records; a document with no record content |
+| `""` (empty source) | **error**; see below |
+| `{"a":\n1}` | **error**; a value split across lines is not a record |
+| `{"a":1}{"b":2}` | **error**; adjacency is not a separator |
+| `{"a":1} {"b":2}` | **error**; a space is not a separator |
+| `{"a":1},{"b":2}` | **error**; a comma is not a separator, and a document is not a JSON array |
 
 In that table `\n`, `\r` and `\t` are the characters themselves. Inside a
 JSON string the two-character escape `\n` is ordinary data, so a record
 containing one stays a single record: `"a\nb"` written on one line parses
 to one string.
 
-Any JSON value may be a record — object, array, string, number, `true`,
-`false`, `null` — so `1\n2\n3` is three records and
+Any JSON value may be a record (object, array, string, number, `true`,
+`false`, `null`) so `1\n2\n3` is three records and
 `{"a":1}\n[1,2]\n"text"` is three records of three different shapes.
 
 **Empty source.** `""` is rejected (`Lex.Empty` is `false`, inherited
 from the strict-JSON base, which matches `encoding/json` on `""`). A
 source of only separators or only spaces is a different case: it holds
 zero records and parses to an empty `[]any`. (Enabling `Lex.Empty` on
-your own instance makes `""` return the engine's empty result, `nil` —
+your own instance makes `""` return the engine's empty result, `nil`,
 not a zero-record document.)
 
 ## Record content
@@ -255,28 +255,28 @@ five are reused untouched. Each rule is a small state machine with *open*
 alternates (entering) and *close* alternates (leaving). The start rule is
 `jsonl`.
 
-### `jsonl` — the document
+### `jsonl`: the document
 
 | Phase | Tokens | Push/Replace | Action | Meaning |
 |---|---|---|---|---|
-| open | `#ZZ` | — | `@array$` | End of input with no separator seen: zero records (a spaces-only source; `""` is rejected before the grammar runs). |
-| open | `#LN #ZZ` | — | `@array$` | Only separators: zero records. |
+| open | `#ZZ` | (none) | `@array$` | End of input with no separator seen: zero records (a spaces-only source; `""` is rejected before the grammar runs). |
+| open | `#LN #ZZ` | (none) | `@array$` | Only separators: zero records. |
 | open | `#LN` | push `record` | `@array$` | Leading blank line(s), then the first record. |
-| open | — | push `record` | `@array$` | The ordinary case: the first record starts immediately. |
-| close | — | — | — | `record` consumes through end of input; nothing is left to match. |
+| open | (none) | push `record` | `@array$` | The ordinary case: the first record starts immediately. |
+| close | (none) | (none) | (none) | `record` consumes through end of input; nothing is left to match. |
 
-### `record` — one line
+### `record`: one line
 
 | Phase | Tokens | Push/Replace | Action | Meaning |
 |---|---|---|---|---|
-| open | — | push `val` | — | A record is any strict-JSON value. |
-| close | `#LN #ZZ` | — | `@push$` | Trailing separator at end of input. |
+| open | (none) | push `val` | (none) | A record is any strict-JSON value. |
+| close | `#LN #ZZ` | (none) | `@push$` | Trailing separator at end of input. |
 | close | `#LN` | replace `record` | `@push$` | Separator with more to come: iterate. |
-| close | `#ZZ` | — | `@push$` | End of input with no trailing newline. |
+| close | `#ZZ` | (none) | `@push$` | End of input with no trailing newline. |
 
 `@array$` allocates the document array; `@push$` appends the
 just-built record to it. The close alternates iterate with **replace**,
-not push, so record count does not grow the rule stack — a 20 000-record
+not push, so record count does not grow the rule stack: a 20 000-record
 document is parsed at constant rule depth (`jsonl_test.go`).
 
 Every alternate carries the group tag `jsonl`, which is what
@@ -294,7 +294,7 @@ alphabetically rather than as written.
 | `#LN` | a run of line characters (`\r`, `\n`) | The record separator. **Not** ignored under this plugin. |
 | `#ZZ` | end of source | Document terminator. |
 | `#SP` | spaces and tabs | Ignored. |
-| `#CM` | comments | Ignored — but comment lexing is off in strict JSON, so no `#CM` is produced. |
+| `#CM` | comments | Ignored, but comment lexing is off in strict JSON, so no `#CM` is produced. |
 
 The engine's line matcher scans a *run* of line characters into a single
 `#LN` token (and treats CRLF as one newline), which is why blank lines
@@ -310,11 +310,11 @@ What it does set, over the strict-JSON base:
 
 | Option | Value | Effect |
 |---|---|---|
-| `TokenSet["IGNORE"]` | `{"#SP", "#CM"}` | Replaces the default ignore set `{#SP, #LN, #CM}`, dropping `#LN` — the newline becomes a token the grammar can match. |
+| `TokenSet["IGNORE"]` | `{"#SP", "#CM"}` | Replaces the default ignore set `{#SP, #LN, #CM}`, dropping `#LN`, so the newline becomes a token the grammar can match. |
 | `Rule.Start` | `"jsonl"` | Parse a whole document, not a single value. |
 | `Rule.Include` | `"json,jsonl"` | Widens the json plugin's `json`-only alternate filter to admit this plugin's alternates. |
 
-Everything else — the strict lexer, the value grammar, the error codes —
+Everything else (the strict lexer, the value grammar, the error codes)
 is inherited from `github.com/tabnas/json/go`.
 
 To configure the parser, pass engine options to `Make`; they are applied
@@ -338,4 +338,4 @@ directory):
 | `values.tsv` | Any JSON value may be a record; escape handling per record. |
 | `separators.tsv` | Trailing newline, CRLF, blank lines, leading/trailing blanks, separator-only documents, surrounding spaces. |
 | `oneline.tsv` | The one-record-per-line rule: split values fail, and adjacency, spaces, or commas are not separators. |
-| `strict.tsv` | Record content is strict JSON — no relaxed-JSON form was re-admitted by layering. |
+| `strict.tsv` | Record content is strict JSON; no relaxed-JSON form was re-admitted by layering. |

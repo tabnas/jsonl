@@ -123,7 +123,7 @@ doc, _ := p.Parse("{\"a\":1}\n{\"b\":2}")
 
 `Make` applies extra options after the grammar is installed, so any
 engine option can be layered this way. The package-level `Parse` is
-unaffected — it keeps using its own default instance.
+unaffected; it keeps using its own default instance.
 
 ## Find the line that failed
 
@@ -159,7 +159,7 @@ the strict-JSON base: `unexpected`, `unterminated_string`,
 `Parse` is all-or-nothing: one malformed record fails the document. When
 you want to keep the good records, or the file is too large to hold in
 memory, split on lines yourself and parse each line as strict JSON with
-the base plugin — which is exactly what a JSON Lines record is:
+the base plugin, which is exactly what a JSON Lines record is:
 
 ```go
 f, err := os.Open("events.jsonl")
@@ -190,7 +190,7 @@ if err := sc.Err(); err != nil {
 
 `bufio.Scanner` caps a line at 64 KiB by default; raise it with
 `sc.Buffer(...)` for long records. Note what you give up: the splitting
-is now yours, so nothing checks the document as a whole — a value spread
+is now yours, so nothing checks the document as a whole, so a value spread
 over two lines arrives as two separate broken records rather than one
 rejected one.
 
@@ -229,8 +229,8 @@ for _, src := range inputs {
 }
 ```
 
-An instance is safe for concurrent use — each parse builds its own
-context and only reads instance state — so the same `p` can be shared by
+An instance is safe for concurrent use (each parse builds its own
+context and only reads instance state) so the same `p` can be shared by
 many goroutines. With no options, `tabnasjsonl.Parse` already does this
 for you behind a `sync.Once`.
 
@@ -254,7 +254,7 @@ The order is required: `Jsonl` on an engine without the strict-JSON
 grammar returns an error naming the problem, and re-applying `Json`
 afterwards narrows the active alternates back to its own `json` tag,
 which switches the JSON Lines rules off again. See
-[concepts](concepts.md#why-the-order-is-load-bearing).
+[concepts](concepts.md#why-the-order-decides-the-result).
 
 ## Install the rules without the options
 
@@ -303,5 +303,5 @@ Columns are tab-separated: `input` (with `\n`, `\r`, `\t`, `\\`
 decoded), `expected` (raw JSON, or `ERROR` / `ERROR:<substring>`). The
 third `opts` column exists in the shared format but this plugin has no
 options, so `parity_test.go` fails a row that sets one. Reserve the Go
-suite for what a fixture cannot state — API surface, error metadata,
+suite for what a fixture cannot state: API surface, error metadata,
 layering, and scale.

@@ -28,7 +28,7 @@ are ordinary module requirements, resolved by `go get`.
 
 ## One example
 
-`tabnasjsonl.Parse` is the one-call entry point — pass source, get the
+`tabnasjsonl.Parse` is the one-call entry point: pass source, get the
 records and an `error`:
 
 ```go
@@ -57,7 +57,7 @@ func main() {
 }
 ```
 
-`Parse` returns `any`, always a `[]any` on success — one entry per
+`Parse` returns `any`, always a `[]any` on success, one entry per
 record, in source order. A JSON object parses to a
 `*tabnas.OrderedMap` (insertion-ordered; `Map.Plain` yields a plain
 `map[string]any` instead), an array to `[]any`, and scalars to
@@ -74,7 +74,7 @@ a value split across lines is not a record:
 
 ```go
 tabnasjsonl.Parse("{\"a\":1}\n{\"b\":2}") // 2 records
-tabnasjsonl.Parse("{\n  \"a\": 1\n}")     // error at 1:2 — pretty-printed JSON is not JSONL
+tabnasjsonl.Parse("{\n  \"a\": 1\n}")     // error at 1:2 (pretty-printed JSON is not JSONL)
 ```
 
 Nothing in this plugin's grammar states that rule. It follows from the
@@ -90,7 +90,7 @@ It does two things:
 
 1. drops `#LN` from the `IGNORE` token set, so a newline stops being
    skipped and becomes a token the grammar can match;
-2. adds two rules — `jsonl` (the document) and `record` (one line).
+2. adds two rules: `jsonl` (the document) and `record` (one line).
 
 Install it on an engine that already carries the strict-JSON grammar.
 Order matters; `Make` does it for you:
@@ -111,7 +111,7 @@ j = tabnasjsonl.Make()
 ```
 
 `Jsonl` on a bare engine returns an error rather than installing the
-JSON grammar itself, because the two orders are not equivalent — the
+JSON grammar itself, because the two orders are not equivalent: the
 json plugin narrows the active rule alternates to its own `json` tag,
 which would filter this plugin's alternates back out.
 
@@ -120,11 +120,11 @@ which would filter this plugin's alternates back out.
 Full documentation follows the [Diátaxis](https://diataxis.fr)
 framework:
 
-- [Tutorial](doc/tutorial.md) — a guided first parse, start to finish.
-- [How-to guide](doc/guide.md) — short recipes for individual tasks.
-- [Reference](doc/reference.md) — the public API, the document grammar,
+- [Tutorial](doc/tutorial.md). A guided first parse, start to finish.
+- [How-to guide](doc/guide.md). Short recipes for individual tasks.
+- [Reference](doc/reference.md). The public API, the document grammar,
   and what each record accepts.
-- [Concepts](doc/concepts.md) — how one lexer change produces the
+- [Concepts](doc/concepts.md). How one lexer change produces the
   one-record-per-line rule, and how the Go version differs from
   TypeScript.
 
@@ -147,4 +147,4 @@ adding a `.tsv` there covers both runtimes.
 
 ## License
 
-Copyright (c) 2026 tabnas, MIT License — see [`../LICENSE`](../LICENSE).
+Copyright (c) 2026 tabnas, MIT License. See [`../LICENSE`](../LICENSE).

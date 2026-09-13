@@ -1,7 +1,7 @@
 # Concepts (Go)
 
-Background on how the Go JSON Lines plugin is put together, and why —
-plus a section on how it differs from the canonical TypeScript version.
+Background on how the Go JSON Lines plugin is put together, and why, plus
+a section on how it differs from the canonical TypeScript version.
 This is understanding-oriented reading; for steps see the
 [tutorial](tutorial.md) and [how-to guide](guide.md), and for exact
 signatures and the accepted grammar see the [reference](reference.md).
@@ -11,20 +11,20 @@ signatures and the accepted grammar see the [reference](reference.md).
 The plugin has no parser of its own. It is a thin layer on a stack of
 three pieces:
 
-- the **Tabnas engine** (`github.com/tabnas/parser/go`) — a rule-based
+- the **Tabnas engine** (`github.com/tabnas/parser/go`), a rule-based
   parser over a configurable, matcher-based lexer, carrying no grammar at
   all;
-- the **strict-JSON grammar** (`github.com/tabnas/json/go`) — the
+- the **strict-JSON grammar** (`github.com/tabnas/json/go`), the
   `val` / `map` / `list` / `pair` / `elem` rules and the lexer settings
   that clamp them to standard JSON; and
-- **this plugin** (`github.com/tabnas/jsonl/go`) — one option override
+- **this plugin** (`github.com/tabnas/jsonl/go`), one option override
   and two rules.
 
 It adds **no lexer matchers** and reuses the five strict-JSON rules
 untouched. All of JSON Lines is expressed as:
 
-1. one lexer semantic change — the newline token stops being ignorable;
-2. two new rules — `jsonl` (the document) and `record` (one line).
+1. one lexer semantic change: the newline token stops being ignorable;
+2. two new rules: `jsonl` (the document) and `record` (one line).
 
 The first of those does more work than it looks like it does, and is
 where this document starts.
@@ -33,7 +33,7 @@ where this document starts.
 
 The engine's default `IGNORE` token set is `{#SP, #LN, #CM}`: the lexer
 emits those tokens and the parser silently skips them between meaningful
-ones. That is why standard JSON does not care about layout — a newline
+ones. That is why standard JSON does not care about layout: a newline
 inside a value is invisible to the grammar.
 
 This plugin replaces that set with `{#SP, #CM}`:
@@ -50,7 +50,7 @@ separator. But consider what else changed. Take a pretty-printed value:
 1}
 ```
 
-Under strict JSON that lexes to `{`, `"a"`, `:`, `1`, `}` — the newline
+Under strict JSON that lexes to `{`, `"a"`, `:`, `1`, `}`, and the newline
 never reaches the parser. Under this plugin it lexes to `{`, `"a"`, `:`,
 `#LN`, `1`, `}`, and by then the parser has pushed `val` to read the
 pair's value. No open alternate of `val` accepts `#LN`, so the parse
@@ -71,8 +71,8 @@ property in both runtimes.
 ## What the two rules add
 
 `jsonl` is the document: it allocates the result array with `@array$`
-and hands off to `record`. `record` is one line: it pushes `val` — the
-strict-JSON value rule — and on close appends the built value with
+and hands off to `record`. `record` is one line: it pushes `val` (the
+strict-JSON value rule) and on close appends the built value with
 `@push$`.
 
 Pushing `val` is the second reason this plugin is small. A record may be
@@ -98,7 +98,7 @@ plain data and stays serializable.
 Replace reuses the current rule frame instead of stacking a new one. Two
 consequences follow. Record count no longer adds stack depth: a
 million-line document is read in a single `record` frame, and
-`jsonl_test.go` pins this at 20 000 records — a size a push-based loop
+`jsonl_test.go` pins this at 20 000 records, a size a push-based loop
 would not survive. (What nests *inside* a record still costs depth, but
 that is bounded by the record, not by the file.) And each record's parent
 stays the `jsonl` node, which is what `@push$` appends to, so the
@@ -132,7 +132,7 @@ The same alternates absorb an interruption from any other ignored token.
 This plugin turns comment lexing off (it inherits strict JSON), so the
 case cannot arise by default; but on an instance that re-enables
 comments, both `{"a":1} // note` on a record line and a comment on a
-line of its own between two records parse — the spare separator its
+line of its own between two records parse: the spare separator its
 newline creates is skipped like any other. (Verified against both
 runtimes, which agree.)
 
@@ -140,13 +140,13 @@ runtimes, which agree.)
 
 Nothing about strictness is restated by this plugin. Double-quoted
 strings, plain decimal numbers, quoted keys, no comments, no trailing
-commas — all of it is the `github.com/tabnas/json/go` configuration,
+commas: all of it is the `github.com/tabnas/json/go` configuration,
 which mirrors `encoding/json`. `strict.tsv` exists to prove that
-*layering did not quietly re-admit anything*: relaxed-JSON forms like
+*layering did not silently re-admit anything*: relaxed-JSON forms like
 `{a:1}`, `{'a':1}`, `[1,2,]`, `01`, `+1`, `.5`, `0x1F` and `"\x41"` are
 still rejected, per record, after the JSON Lines rules are installed.
 
-## Why the order is load-bearing
+## Why the order decides the result
 
 `Make` installs the strict-JSON plugin first and this one second. That
 order is not a convention:
@@ -156,8 +156,8 @@ order is not a convention:
 - This plugin widens that to `Rule.Include = "json,jsonl"`, admitting its
   own alternates (every one of which is tagged `jsonl`) alongside them.
 
-Apply them the other way round — or re-apply `Json` to an engine that
-already has both — and the widening happens first, then the narrowing.
+Apply them the other way round (or re-apply `Json` to an engine that
+already has both) and the widening happens first, then the narrowing.
 The `jsonl` alternates are filtered straight back out while `jsonl`
 remains the start rule, so the parser has an entry rule with no usable
 alternates and *nothing* parses: not a document, not a single JSON value.
@@ -171,7 +171,7 @@ plugin onto the same engine. Instead the missing-grammar case is
 reported:
 
 ```
-tabnasjsonl: the strict-JSON grammar must be installed first — call
+tabnasjsonl: the strict-JSON grammar must be installed first: call
 tabnasjson.Json(j, nil) before Jsonl(j, nil), or use Make()
 ```
 
@@ -182,13 +182,13 @@ Two nearby cases behave differently, and the difference is deliberate:
 - `""` is **rejected**. `Lex.Empty` is `false`, inherited from the
   strict-JSON base, which matches `encoding/json`: an empty string is not
   a JSON document.
-- `"\n"` — or any source of only separators and spaces — parses to a
+- `"\n"`. Or any source of only separators and spaces, parses to a
   document of **zero records**. It is content-free, not absent, and the
   `jsonl` rule has open alternates (`#ZZ` and `#LN #ZZ`) that say so.
 
 A JSON Lines file that has been created but not yet written to is
 therefore an error, while one containing a stray newline is an empty
-document. That is the honest reading of the two inherited rules; if the
+document. That is the accurate reading of the two inherited rules; if the
 first is not what your caller wants, `Lex.Empty` is theirs to re-enable.
 
 ## Why one instance is reused
@@ -197,19 +197,19 @@ Building the engine and installing the grammar dominates the cost of a
 parse; the parse itself is cheap. `Parse` therefore caches a single
 instance behind a `sync.Once` and reuses it for every call. Reuse is safe
 for concurrent callers because a parse builds its own context and only
-reads instance state — the same reason a `Make()` instance can be shared
+reads instance state, which is the same reason a `Make()` instance can be shared
 across goroutines.
 
 ## Differences from the TS version
 
 The TypeScript implementation (`ts/src/jsonl.ts`) is canonical; this Go
 module follows it. The differences below do **not** change what parses or
-what it parses to — they are host-language and engine realities. Parity
+what it parses to; they are host-language and engine realities. Parity
 on behaviour is held by the shared fixtures, not by inspection.
 
 ### The `IGNORE` override is spelled differently
 
-Both runtimes make the same change — remove `#LN` from the ignore set —
+Both runtimes make the same change (remove `#LN` from the ignore set)
 but they write it differently, because the two **engines** combine a
 `tokenSet` override with the default set differently:
 
@@ -230,8 +230,8 @@ under `options.tokenSet`.
 
 A Go map has no order, so the Go grammar spec carries
 `RuleOrder: []string{"jsonl", "record"}`. Without it the engine falls
-back to sorted rule names and `(*Tabnas).RuleNames` — and anything built
-on it, such as a grammar diagram or a debug model — would report the
+back to sorted rule names and `(*Tabnas).RuleNames` (and anything built
+on it, such as a grammar diagram or a debug model) would report the
 rules alphabetically rather than as written. The TS object literal
 already has a declaration order, so its grammar needs no equivalent.
 
@@ -276,7 +276,7 @@ do it, since a Go map has none.
 
 Every parse case expressible as `input → JSON` lives in
 [`test/spec/*.tsv`](../../test/spec/), which **both** runtimes discover
-by directory listing — `go/parity_test.go` globs the directory and
+by directory listing: `go/parity_test.go` globs the directory and
 `ts/test/parity.test.ts` reads it. Adding one row runs it in Go and
 TypeScript, so the two cannot drift without one of them going red.
 

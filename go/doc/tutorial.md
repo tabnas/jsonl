@@ -1,4 +1,4 @@
-# Tutorial — your first JSON Lines parse (Go)
+# Tutorial: your first JSON Lines parse (Go)
 
 This walks you from nothing to a working parse, through the format's one
 real rule, and on to a parse error and your own parser instance. Follow
@@ -11,8 +11,8 @@ yourself.
 For a recipe-style index of individual tasks, see the
 [how-to guide](guide.md). For exhaustive signatures and the accepted
 grammar, see the [reference](reference.md). For why one lexer change is
-enough to define the format — and how the Go version differs from
-TypeScript — see [concepts](concepts.md).
+enough to define the format (and how the Go version differs from
+TypeScript) see [concepts](concepts.md).
 
 ## 1. Install
 
@@ -41,7 +41,7 @@ doc, err := tabnasjsonl.Parse(`{"name":"alice","age":30}
 // err: nil
 ```
 
-On success the value is always a `[]any` — one entry per line, in source
+On success the value is always a `[]any`, one entry per line, in source
 order. A single-record document is still a slice:
 
 ```go
@@ -72,7 +72,7 @@ n := rec.Len()              // 2
 ```
 
 Numbers are `float64`, so `age` is `float64(30)`. If you would rather
-have plain, unordered `map[string]any` records, that is one option away —
+have plain, unordered `map[string]any` records, that is one option away;
 see [the guide](guide.md#get-plain-mapstringany-records).
 
 ## 4. Records need not be objects
@@ -108,7 +108,7 @@ doc, err := tabnasjsonl.Parse(`{
   "a": 1
 }`)
 // doc: nil
-// err: non-nil — the newline after `{` ends the record, mid-value
+// err: non-nil, because the newline after `{` ends the record, mid-value
 ```
 
 Written on one line, the same value is fine:
@@ -119,7 +119,7 @@ doc, err := tabnasjsonl.Parse(`{"a":1}`)
 ```
 
 The contrast is the whole format. Notice that the *content* of a record
-did not change — only its layout. Records are separated by newlines and
+did not change, only its layout. Records are separated by newlines and
 nothing else: adjacency (`{"a":1}{"b":2}`), a space, or a comma between
 two values are all errors, because a JSON Lines document is a sequence
 of lines, not a JSON array.
@@ -143,14 +143,14 @@ _, err := tabnasjsonl.Parse("{\"a\":1}\n{\"b\":}\n{\"c\":3}")
 var je *tabnasjsonl.JsonlError
 if errors.As(err, &je) {
 	fmt.Println(je.Code) // unexpected
-	fmt.Println(je.Row)  // 2 — the second line is the bad one
+	fmt.Println(je.Row)  // 2 (the second line is the bad one)
 	fmt.Println(je.Col)  // 6
 }
 ```
 
 `je.Error()` is a formatted, source-pointing report you can show a user;
 `Code`, `Row`, and `Col` are what you branch on. Because the record
-separator is a real token, the row count stays honest however many blank
+separator is a real token, the row count stays correct however many blank
 lines and records precede the failure.
 
 ## 7. Separators you do not have to think about
@@ -190,14 +190,14 @@ doc, err := p.Parse("1\n2\n3")
 // doc: []any{float64(1), float64(2), float64(3)}
 ```
 
-An instance is reusable and safe for concurrent use — build it once, call
+An instance is reusable and safe for concurrent use: build it once, call
 `Parse` on it many times. Building the engine and grammar is the
 expensive part; parsing is cheap.
 
 ## 9. See the layering
 
 `Make` is a two-line convenience. Doing it by hand shows what this
-package actually is — a small layer on the strict-JSON grammar:
+package actually is: a small layer on the strict-JSON grammar:
 
 ```go
 import (
@@ -219,21 +219,21 @@ doc, err := j.Parse("{\"a\":1}\n2")
 ```
 
 Swap those two lines and the second `Use` returns an error naming the
-problem, rather than quietly building a parser that does not work:
+problem, rather than silently building a parser that does not work:
 
 ```go
 j := tabnas.Make()
 err := j.Use(tabnasjsonl.Jsonl)
-// err: tabnasjsonl: the strict-JSON grammar must be installed first — ...
+// err: tabnasjsonl: the strict-JSON grammar must be installed first: ...
 ```
 
-The order is load-bearing, not stylistic;
-[concepts](concepts.md#why-the-order-is-load-bearing) explains why.
+The order decides the result, and is not stylistic;
+[concepts](concepts.md#why-the-order-decides-the-result) explains why.
 
 ## Where to go next
 
-- [How-to guide](guide.md) — focused recipes for individual tasks.
-- [Reference](reference.md) — the public API, the document grammar, and
+- [How-to guide](guide.md). Focused recipes for individual tasks.
+- [Reference](reference.md). The public API, the document grammar, and
   exactly what a record accepts.
-- [Concepts](concepts.md) — how making the newline significant defines
+- [Concepts](concepts.md). How making the newline significant defines
   the format, and how the Go version differs from TypeScript.

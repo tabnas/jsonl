@@ -24,10 +24,10 @@ whole thing.
 {"event":"logout","user":"alice"}
 ```
 
-`@tabnas/jsonl` turns that text into an array of values — one entry per
+`@tabnas/jsonl` turns that text into an array of values, one entry per
 line, in order.
 
-## Step 1 — Install
+## Step 1: Install
 
 ```bash
 npm install @tabnas/parser @tabnas/json @tabnas/jsonl
@@ -39,7 +39,7 @@ supplies the strict-JSON grammar for the *content* of a record, and
 `@tabnas/jsonl` adds the line structure on top. Both of the first two
 are peer dependencies. Node >= 24.
 
-## Step 2 — Parse a document
+## Step 2: Parse a document
 
 Everything you need for the common case is one function, `parse`. Give
 it the whole document; get back an array of the per-line values.
@@ -65,11 +65,11 @@ const { parse } = require('@tabnas/jsonl')
 parse('{"user":"alice"}') // => [{ user: 'alice' }]
 ```
 
-## Step 3 — Any JSON value is a record
+## Step 3: Any JSON value is a record
 
-The JSON Lines format allows any JSON value on a line, not just objects.
+The JSON Lines format allows any JSON value on a line, not only objects.
 Records do not have to share a shape, and repeated keys across lines do
-not merge — each line is parsed independently.
+not merge; each line is parsed independently.
 
 ```js
 const { parse } = require('@tabnas/jsonl')
@@ -86,7 +86,7 @@ const { parse } = require('@tabnas/jsonl')
 parse('{"a":{"b":{"c":[1,2,3]}}}') // => [{ a: { b: { c: [1, 2, 3] } } }]
 ```
 
-## Step 4 — Meet the separator
+## Step 4: Meet the separator
 
 Real files are untidy. The newline is the record separator, and the
 parser handles the usual variations without being asked:
@@ -107,7 +107,7 @@ parse('{"a":1}\r\n{"b":2}')   // => [{ a: 1 }, { b: 2 }]
 parse('  {"a":1}  \n\t{"b":2}') // => [{ a: 1 }, { b: 2 }]
 ```
 
-## Step 5 — See the one-record-per-line rule bite
+## Step 5: See the one-record-per-line rule bite
 
 This is the difference between JSON Lines and JSON. In a `.json` file
 you may spread a value over as many lines as you like. In a `.jsonl`
@@ -137,7 +137,7 @@ parse('{"a":1}\n{"b":2}') // => [{ a: 1 }, { b: 2 }]
 ```
 
 Records must also be *separated* by that newline. Neither adjacency nor
-a comma will do — a JSONL document is not a JSON array:
+a comma will do, because a JSONL document is not a JSON array:
 
 ```js
 const { parse } = require('@tabnas/jsonl')
@@ -149,7 +149,7 @@ bad('{"a":1} {"b":2}') // => true
 bad('{"a":1},{"b":2}') // => true
 ```
 
-## Step 6 — Handle an error, and find the line
+## Step 6: Handle an error, and find the line
 
 An invalid document throws a `TabnasError`. Its `lineNumber` is the line
 of the offending record, which is the fact you actually need when a
@@ -174,7 +174,7 @@ Alongside `code` and `lineNumber` it carries `columnNumber` and a
 human-readable, source-pointing `message`.
 
 Because a record's content is strict JSON, the things JSON rejects are
-rejected here too — per record, on the line where they appear:
+rejected here too, per record, on the line where they appear:
 
 ```js
 const { parse } = require('@tabnas/jsonl')
@@ -188,7 +188,7 @@ bad('{"a":01}')    // => true
 bad('{"a":1} // c') // => true
 ```
 
-## Step 7 — Know the empty-document boundary
+## Step 7: Know the empty-document boundary
 
 An empty string throws. That is inherited from `@tabnas/json`, which
 mirrors `JSON.parse('')`. A document that contains only blank lines is a
@@ -208,7 +208,7 @@ parse('\n') // => []
 ```
 
 If an empty file is legal input in your program, guard it at the call
-site — one line:
+site, one line:
 
 ```js
 const { parse } = require('@tabnas/jsonl')
@@ -219,10 +219,10 @@ parseDoc('')     // => []
 parseDoc('1\n2') // => [1, 2]
 ```
 
-## Step 8 — Build your own parser instance
+## Step 8: Build your own parser instance
 
-`parse` uses one shared, lazily-built engine. When you want your own —
-to hold engine options, or just to keep it explicit — call `make`:
+`parse` uses one shared, lazily-built engine. When you want your own (to
+hold engine options, or just to keep it explicit) call `make`:
 
 ```js
 const { make } = require('@tabnas/jsonl')
@@ -235,7 +235,7 @@ p.parse('{"c":3}')          // => [{ c: 3 }]
 An instance is reusable and holds no state between parses. Building one
 compiles the grammar, so build it once and parse many times.
 
-## Step 9 — See the layering underneath
+## Step 9: See the layering underneath
 
 `make` is a convenience for a composition you can write yourself, and
 the order carries meaning:
@@ -267,13 +267,13 @@ message // => true
 ```
 
 [`concepts.md`](concepts.md) explains what that layer actually consists
-of — it is smaller than you would guess.
+of; it is smaller than you would guess.
 
 ## Where to go next
 
-- [`guide.md`](guide.md) — recipes: streaming a large file, skipping bad
+- [`guide.md`](guide.md). Recipes: streaming a large file, skipping bad
   records, writing JSONL back out, testing parsed records.
-- [`reference.md`](reference.md) — the exact API, error codes, and
+- [`reference.md`](reference.md). The exact API, error codes, and
   accepted syntax.
-- [`concepts.md`](concepts.md) — why one lexer change is the whole
+- [`concepts.md`](concepts.md). Why one lexer change is the whole
   format.

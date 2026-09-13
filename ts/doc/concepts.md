@@ -11,8 +11,8 @@ signatures see [`reference.md`](reference.md).
 [JSON Lines](https://jsonlines.org) has one rule that JSON does not:
 **one record per line**. A value may not be spread over several lines,
 because the whole point of the format is that a consumer can split a
-file on newlines — with `split`, `readline`, `head`, `wc -l`, a Hadoop
-input format — and get whole records without parsing anything.
+file on newlines (with `split`, `readline`, `head`, `wc -l`, a Hadoop
+input format) and get whole records without parsing anything.
 
 The obvious way to enforce that is to write it into the grammar: rules
 that track whether a newline has been seen inside a value and reject it.
@@ -25,7 +25,7 @@ tokenSet: { IGNORE: ['#SP', null, '#CM'] }
 
 The engine's default `IGNORE` set is `['#SP','#LN','#CM']`. Tokens in
 that set are still produced by the lexer, but the parser skips over them
-when looking for the next meaningful token — which is exactly why JSON
+when looking for the next meaningful token, which is exactly why JSON
 lets you put a newline anywhere whitespace is allowed. Clearing the
 `#LN` slot removes that permission. A newline is now a token like `{` or
 `,`: it must be matched by some rule alternative, or the parse fails.
@@ -90,8 +90,8 @@ jsonl.open:
   (otherwise)        -> push record, @array$
 ```
 
-`record` is one line. It pushes `val` — the whole inherited JSON value
-grammar, which is why a record may be any JSON value — and then decides
+`record` is one line. It pushes `val` (the whole inherited JSON value
+grammar, which is why a record may be any JSON value) and then decides
 what follows:
 
 ```text
@@ -150,7 +150,7 @@ The run only covers line characters, though, and a "blank" line in a
 real file often is not blank: `"\n \n"` has a space in it, so it lexes
 as `#LN #SP #LN`. `#SP` is still ignored, so **two** separators reach
 the grammar where the close alternate expects one. That is what the
-second `record` open alternate is for — on a separator with no value yet
+second `record` open alternate is for: on a separator with no value yet
 seen, it replaces itself and looks again:
 
 ```text
@@ -170,7 +170,7 @@ parse(' \n \n {"a":1}')         // => [{ a: 1 }]
 parse(' \n \n ')                // => []
 ```
 
-The division of labour is worth noting: the lexer collapses what it can
+The division of labour matters here: the lexer collapses what it can
 into one token, and exactly one grammar alternate covers the rest. Both
 halves are pinned by rows in
 [`test/spec/separators.tsv`](../../test/spec/separators.tsv).
@@ -178,7 +178,7 @@ halves are pinned by rows in
 The same "the parser never sees it" logic extends to comments if you
 enable them. A `#CM` token stays in the `IGNORE` set, so with
 `comment: { lex: true }` a comment can sit at the end of a record line
-or on a line of its own without disturbing the separator structure — see
+or on a line of its own without disturbing the separator structure; see
 the [guide](guide.md#allow-comments).
 
 ## Why the JSON layer goes on first
@@ -186,7 +186,7 @@ the [guide](guide.md#allow-comments).
 `new Tabnas().use(json).use(jsonl)` is order-sensitive, and the reason is
 alternate filtering. Every grammar alternate carries group tags, and
 `rule.include` selects which tags are active. `@tabnas/json` sets
-`rule.include: 'json'` — a deliberate narrowing that keeps a strict JSON
+`rule.include: 'json'`, a deliberate narrowing that keeps a strict JSON
 parse strict. This plugin widens it to `'json,jsonl'`.
 
 Apply them the other way round and `json`'s narrowing lands last, so the
@@ -194,7 +194,7 @@ Apply them the other way round and `json`'s narrowing lands last, so the
 then fail in a way that says nothing about the real mistake.
 
 The plugin could paper over this by installing `json` itself when it is
-missing, but that would quietly accept the wrong order and hide the
+missing, but that would silently accept the wrong order and hide the
 model from the reader. Instead it checks for the `val` rule and throws a
 named error:
 
@@ -225,8 +225,8 @@ Two inherited behaviours are worth naming because they surprise people:
 
 **Empty input throws.** `@tabnas/json` sets `lex.empty: false` so that it
 matches `JSON.parse('')`, and this plugin does not override it. A
-document of only blank lines is a different case — it holds zero records
-and parses to `[]` — so the boundary is between "no document" and "a
+document of only blank lines is a different case (it holds zero records
+and parses to `[]`) so the boundary is between "no document" and "a
 document with no records":
 
 ```js
@@ -250,8 +250,8 @@ and the caller-side guard is a single line (see the
 [guide](guide.md#handle-an-empty-or-blank-document)).
 
 **Objects have a null prototype.** Records are built with
-`Object.create(null)`, so a `"__proto__"` key in untrusted input — which
-is exactly the sort of input JSON Lines carries — is stored as ordinary
+`Object.create(null)`, so a `"__proto__"` key in untrusted input (which
+is exactly the sort of input JSON Lines carries) is stored as ordinary
 data rather than mutating a prototype chain. The cost is that parsed
 objects have no `Object.prototype`, so `obj.hasOwnProperty` is
 `undefined` and `assert.deepStrictEqual` against a plain literal fails
@@ -261,8 +261,8 @@ on the prototype difference. Compare after
 ## Why a document is an array
 
 `parse` returns an array even for a one-record document, and even for a
-document of zero records. The alternative — returning a bare value for a
-single record — would make the return type depend on the input's line
+document of zero records. The alternative (returning a bare value for a
+single record) would make the return type depend on the input's line
 count, so every caller would need a shape check before using the result.
 A sequence type for a sequence format keeps `parse(src).length`,
 `for (const rec of parse(src))`, and `map` working the same way for

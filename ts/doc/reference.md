@@ -96,7 +96,7 @@ Installing it on an engine without the JSON grammar throws a plain
 `Error`:
 
 ```text
-@tabnas/jsonl: the strict-JSON grammar must be installed first —
+@tabnas/jsonl: the strict-JSON grammar must be installed first:
 use `new Tabnas().use(json).use(jsonl)`, or call this package's `make()`.
 ```
 
@@ -104,8 +104,8 @@ The order is required, not conventional: `@tabnas/json` sets
 `rule.include: 'json'`, which would filter this plugin's alternates back
 out if it were applied afterwards.
 
-The base must also be *strict*. A `val` rule alone is not enough — every
-JSON-family grammar has one — so the plugin reads the three lexer options
+The base must also be *strict*. A `val` rule alone is not enough (every
+JSON-family grammar has one) so the plugin reads the three lexer options
 that decide record content (`text.lex`, `comment.lex`, `string.chars`) and
 refuses a relaxed base, naming the ones that are wrong:
 
@@ -192,7 +192,7 @@ The `null` prototype comes from `@tabnas/json` and is deliberate: a
 `"__proto__"` key is stored as an ordinary own property and cannot
 mutate a prototype chain. Consequences:
 
-- `Object.prototype` methods are absent — use `Object.hasOwn(obj, k)`,
+- `Object.prototype` methods are absent. Use `Object.hasOwn(obj, k)`,
   not `obj.hasOwnProperty(k)`;
 - `assert.deepStrictEqual` against a plain object literal **fails** on
   the prototype difference. Compare after
@@ -314,8 +314,8 @@ base:
 | `rule.start` | The entry rule becomes `jsonl` (the document) instead of `val` (a single value). |
 | `rule.include` | Widens the active alternates from `json` to `json,jsonl`, so this plugin's alternates are not filtered out by the base's own narrowing. |
 
-Everything else — string, number, comment, key, and empty-input
-handling — is inherited from `@tabnas/json` and deliberately not
+Everything else (string, number, comment, key, and empty-input
+handling) is inherited from `@tabnas/json` and deliberately not
 restated. Notably `lex.empty: false` is why an empty source throws.
 
 No lexer matchers are added.
