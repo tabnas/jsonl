@@ -101,7 +101,7 @@ a bare engine throws a named error rather than failing later at parse
 time.
 
 `make(opts?)` does the same composition in one call and applies any
-extra engine options on top; `parse` reuses one lazily-built `make()`
+extra engine options on top; `parse` reuses one lazily built `make()`
 instance.
 
 ## What a record may contain

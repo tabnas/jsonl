@@ -22,7 +22,7 @@ rows[1].id    // => 2
 
 ## Reuse one parser instance
 
-`parse` already reuses a single lazily-built engine, so repeated calls do
+`parse` already reuses a single lazily built engine, so repeated calls do
 not rebuild the grammar. When you want an explicit instance (to hold
 engine options, or to keep the dependency visible) build one with `make`
 and keep it:

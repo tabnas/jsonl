@@ -46,7 +46,7 @@ On success the concrete type is always `[]any`, one entry per record, in
 source order. On failure it returns `(nil, *JsonlError)`; it never
 panics.
 
-Uses a single, lazily-created default instance (built once via
+Uses a single, lazily created default instance (built once via
 `sync.Once`), so repeated calls do not rebuild the engine and grammar.
 The shared instance is safe for concurrent use: each parse builds its own
 context and only reads instance state.
@@ -187,7 +187,7 @@ implements `json.Marshaler`. Build the instance with the engine's
 
 ## Document grammar
 
-A document is a possibly-empty sequence of records. A record is one
+A document is a possibly empty sequence of records. A record is one
 complete standard-JSON value occupying exactly one line. The separator is
 the newline, and only the newline.
 
