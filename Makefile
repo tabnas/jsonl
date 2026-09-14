@@ -5,7 +5,8 @@
 # to build after `npm install` (ts) / module download (go).
 
 .PHONY: all build test clean build-ts build-go test-ts test-go \
-        clean-ts clean-go publish-ts publish-go tags-go reset
+        clean-ts clean-go publish-ts publish-go tags-go reset \
+        prose prose-counts
 
 all: build test
 
