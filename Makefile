@@ -59,7 +59,7 @@ build-rs:
 	cd rs && cargo build --all-targets
 
 test-rs:
-	cd rs && cargo test --all-targets
+	cd rs && cargo test --all-targets && cargo test --doc
 	cd rs && cargo clippy --all-targets --all-features -- -D warnings
 
 clean-rs:

@@ -129,3 +129,10 @@ if ! diff -q <(lock_without_sibling_versions "$LOCK_BEFORE") \
   cp "$LOCK_BEFORE" Cargo.lock   # leave the tree as it was found
   exit 1
 fi
+# The exempted sibling versions may still have moved, and cargo wrote them
+# into the lock. Put the lock back so a green gate leaves the tree exactly
+# as it found it, whatever the siblings did: updating the committed lock is
+# a deliberate cargo run and commit, never a side effect of running the gate.
+if ! cmp -s "$LOCK_BEFORE" Cargo.lock; then
+  cp "$LOCK_BEFORE" Cargo.lock
+fi
