@@ -249,10 +249,12 @@ Object.getPrototypeOf(parse('{"a":1}')[0])   // => null
 |---|---|---|
 | **TypeScript / JavaScript**. Canonical | `@tabnas/jsonl` (npm) | [`ts/README.md`](ts/README.md) |
 | **Go**. Port that follows the TS plugin | `github.com/tabnas/jsonl/go` | [`go/README.md`](go/README.md) |
+| **Rust**. Port that follows the TS plugin | `tabnas-jsonl` (crate, sibling checkout) | [`rs/README.md`](rs/README.md) |
 
-Both runtimes are held to the same behaviour by the shared
+All three runtimes are held to the same behaviour by the shared
 [`test/spec/*.tsv`](test/spec/) fixtures, which each side discovers and
-runs automatically.
+runs automatically. The Rust crate is a library on the `tabnas` and
+`tabnas-json` crates, both consumed as sibling checkouts.
 
 ## Documentation
 

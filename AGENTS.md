@@ -16,8 +16,9 @@ Unlike `@tabnas/zon` (a *jsonic* plugin), this is a **`@tabnas/json`
 plugin**: it layers on the strict, standard-JSON grammar rather than the
 relaxed one, because a JSONL record is by definition strict JSON. Install
 it on a json-enabled engine — `new Tabnas().use(json).use(jsonl)` (TS) /
-`tabnasjson.Json` then `Jsonl` (Go), or use this package's `make()` /
-`Make()`.
+`tabnasjson.Json` then `Jsonl` (Go) / `tabnas_json::json` then
+`tabnas_jsonl::jsonl` (Rust), or use this package's `make()` / `Make()` /
+`make()`.
 
 ## The one thing to understand before changing anything
 
@@ -45,8 +46,9 @@ to make the regression loud.
 The second structural choice: `record`'s close alternates iterate with
 `r` (replace), not `p` (push). Every record is parsed in the **same stack
 frame**, so a million-line document does not grow the rule stack.
-`ts/test/jsonl.test.ts` and `go/jsonl_test.go` both pin this at 20,000
-records; switching to `p` would blow the stack long before that.
+`ts/test/jsonl.test.ts`, `go/jsonl_test.go` and `rs/tests/jsonl_test.rs`
+all pin this at 20,000 records; switching to `p` would blow the stack
+long before that.
 
 ## Repository map
 
@@ -54,32 +56,39 @@ records; switching to `p` would blow the stack long before that.
 |---|---|
 | [`ts/`](ts/) | **Canonical** TypeScript implementation — the `@tabnas/jsonl` npm package. Plugin in `src/jsonl.ts`. Peer-depends on `@tabnas/json` and `@tabnas/parser`. |
 | [`go/`](go/) | Go port — `github.com/tabnas/jsonl/go` (`const VERSION` in `go/jsonl.go`). Plugin `Jsonl` plus `Make` / `Parse` helpers. |
-| [`test/spec/`](test/spec/) | Shared `.tsv` conformance fixtures. **Both** runners auto-discover and run every file here, so adding one covers TypeScript and Go together. See [`test/AGENTS.md`](test/AGENTS.md). |
+| [`rs/`](rs/) | Rust port — the `tabnas-jsonl` crate (library `tabnas_jsonl`, `pub const VERSION` in `rs/src/lib.rs`). Plugin `jsonl` plus `make` / `parse`. Depends on the `tabnas` and `tabnas-json` crates by **path** (sibling checkouts of `parser` and `json`), and on `tabnas-support` for the fixtures. Library only. See [`rs/AGENTS.md`](rs/AGENTS.md). |
+| [`test/spec/`](test/spec/) | Shared `.tsv` conformance fixtures. **Every** runner auto-discovers and runs every file here, so adding one covers TypeScript, Go and Rust together. See [`test/AGENTS.md`](test/AGENTS.md). |
 | [`ts/test/`](ts/test/) | TS tests (`.ts`, compiled to `dist-test/`): `jsonl.test.ts` (API, errors, layering, scale), `parity.test.ts` (the shared fixtures), `debug-model.test.ts` (grammar introspection via `@tabnas/debug`), `doc-examples.test.ts` (runs `// =>` assertions in the docs), `version.test.ts`. |
 | [`go/`](go/) tests | `jsonl_test.go` (the same API/error/layering/scale cases), `parity_test.go` (the same `.tsv` fixtures), `version_test.go`. |
-| [`ts/doc/`](ts/doc/), [`go/doc/`](go/doc/) | Per-runtime 4-quadrant Diataxis docs: `tutorial.md`, `guide.md`, `reference.md`, `concepts.md`. |
+| [`rs/tests/`](rs/tests/) | `jsonl_test.rs` (the same cases again, plus the shared default parser under threads), `parity_test.rs` (the same `.tsv` fixtures, through `tabnas-support`), `version_test.rs`. |
+| [`ts/doc/`](ts/doc/), [`go/doc/`](go/doc/) | Per-runtime 4-quadrant Diataxis docs: `tutorial.md`, `guide.md`, `reference.md`, `concepts.md`. The Rust port has `rs/README.md` only. |
+| [`ci/`](ci/) | Workflows and scripts **staged** for promotion into `.github/workflows/`: `ci/workflows/rust.yml` (the Rust gate), `ci/workflows/docs.yml` (the prose gate), `ci/rust/run.sh` (what the Rust gate runs). |
 
 Unlike `@tabnas/zon`, there is **no single-source `*-grammar.jsonic` file
 and no embed step**. The grammar is two rules, so it is written directly
-in both runtimes in the declarative `GrammarSpec` form — the same choice
-`@tabnas/json` makes. The shared `test/spec/*.tsv` fixtures are what keep
-the two copies honest; there is nothing to re-embed after an edit.
+in all three runtimes in the declarative `GrammarSpec` form — the same
+choice `@tabnas/json` makes. The shared `test/spec/*.tsv` fixtures are
+what keep the three copies honest; there is nothing to re-embed after an
+edit.
 
 ## Authority and alignment rules
 
-1. **TypeScript is canonical.** When TS and Go disagree on parse
-   behaviour, TS wins; change Go to match.
-2. **Both runtimes must change together.** The grammar exists twice
-   (`ts/src/jsonl.ts` and `go/jsonl.go`). An edit to one is a bug until
-   the other matches. The shared fixtures will catch it.
+1. **TypeScript is canonical.** When TS and a port disagree on parse
+   behaviour, TS wins; change the port to match.
+2. **All runtimes must change together.** The grammar exists three times
+   (`ts/src/jsonl.ts`, `go/jsonl.go` and `rs/src/lib.rs`). An edit to one
+   is a bug until the others match. The shared fixtures will catch it.
 3. **Prefer a shared fixture over an in-language assertion.** If a case
    is expressible as `input -> JSON`, it belongs in `test/spec/`, where
-   it runs in both runtimes. In-language tests are for what a fixture
+   it runs in every runtime. In-language tests are for what a fixture
    cannot state: API surface, error metadata, layering, scale.
-4. The `VERSION` const in `go/jsonl.go` and the exported `VERSION` in
-   `ts/src/jsonl.ts` MUST both equal `ts/package.json` "version" —
-   `go/version_test.go` and `ts/test/version.test.ts` read that file and
-   fail (never skip) on drift.
+4. The `VERSION` const in `go/jsonl.go`, the exported `VERSION` in
+   `ts/src/jsonl.ts`, and in Rust both `pub const VERSION` in
+   `rs/src/lib.rs` and `version` in `rs/Cargo.toml`, MUST all equal
+   `ts/package.json` "version" — `go/version_test.go`,
+   `ts/test/version.test.ts` and `rs/tests/version_test.rs` read that
+   file and fail (never skip) on drift. `make version-rs V=x.y.z` bumps
+   the two Rust sites and refreshes `rs/Cargo.lock`.
 
 ## Repo-specific gotchas
 
@@ -87,21 +96,24 @@ the two copies honest; there is nothing to re-embed after an edit.
   purpose.** TS merges `tokenSet` *index-wise* against the default, so it
   clears a slot with an explicit `null`: `IGNORE: ['#SP', null, '#CM']`.
   Go *replaces* the set, so it lists the survivors:
-  `{"IGNORE": {"#SP", "#CM"}}`. Same behaviour; the divergence is the
-  engine's, and is documented in the parser port's `go/doc/differences.md`.
-  Do not "unify" these — one of them would silently stop dropping `#LN`.
+  `{"IGNORE": {"#SP", "#CM"}}`, and so does Rust, in the serialized
+  options document: `"tokenSet": {"IGNORE": ["#SP", "#CM"]}`. Same
+  behaviour; the divergence is the engine's, and is documented in the
+  parser port's `go/doc/differences.md`. Do not "unify" these — one of
+  them would silently stop dropping `#LN`.
 - **Plugin order is enforced, not merely documented.** `@tabnas/json`
   sets `rule.include: 'json'`; applying it *after* this plugin filters
-  these alternates back out. Both runtimes therefore check that the
-  strict-JSON grammar is already installed and report a named error if it
-  is not. Keep that check: without it the failure mode is an obscure
+  these alternates back out. Every runtime therefore checks that the
+  strict-JSON grammar is already installed and reports a named error if it
+  is not (thrown in TS, returned as an `error` in Go and as a
+  `GrammarError` in Rust). Keep that check: without it the failure mode is an obscure
   parse error much later.
 - **The base check tests strictness, not the presence of a `val` rule.**
   Every JSON-family grammar defines `val`, so a rule-name check alone
   passes on a *relaxed* base: `use(jsonic).use(jsonl)` would then accept
-  `{a:1}` as a record, contradicting what this package documents. Both
-  runtimes therefore read the three lexer options that actually decide
-  record content — `text.lex`, `comment.lex`, `string.chars` — and refuse
+  `{a:1}` as a record, contradicting what this package documents. Every
+  runtime therefore reads the three lexer options that actually decide
+  record content — `text.lex`, `comment.lex`, `string.chars` — and refuses
   a base that relaxes any of them, naming the offending ones. If you ever
   need a relaxed JSONL, that is a different plugin, not a looser check
   here.
@@ -149,8 +161,17 @@ go build ./...
 go test ./...          # plugin cases + the shared test/spec fixtures
 ```
 
-Both from the repo root via the [`Makefile`](Makefile): `make build`,
-`make test`, `make clean`, `make reset`. `make publish-go V=x.y.z`
+Rust (from `rs/`):
+
+```bash
+cargo build --all-targets
+cargo test --all-targets   # plugin cases + the shared test/spec fixtures
+cargo test --doc
+cargo clippy --all-targets --all-features -- -D warnings
+```
+
+All three from the repo root via the [`Makefile`](Makefile): `make build`,
+`make test`, `make clean`, `make reset` (TS and Go only). `make publish-go V=x.y.z`
 injects `V` into the `const VERSION` in `go/jsonl.go`, commits and tags
 `go/vX.Y.Z`; `make publish-ts` publishes the npm package.
 
@@ -158,12 +179,21 @@ In an isolated checkout the `@tabnas/*` dev dependencies resolve from the
 npm registry. There is no corpus to download and no generated file to
 build, so a clone is ready after `npm install`.
 
+The Rust crate has no registry to fall back on: `rs/Cargo.toml` declares
+`tabnas = { path = "../../parser/rs" }`, `tabnas-json = { path =
+"../../json/rs" }` and, as a dev-dependency, `tabnas-support = { path =
+"../../support/rs" }`. None of the three is published, so clone
+`tabnas/parser`, `tabnas/json` and `tabnas/support` as siblings of this
+repo before running cargo. `rs/Cargo.lock` is committed; `ci/rust/run.sh`
+checks it by diffing rather than with `--locked`, exempting the three
+sibling crates' versions, which legitimately move with their checkouts.
+
 ## Verify your work
 
 The commands that prove a change is correct. Run them from the repo root:
 
 ```bash
-make build && make test      # both runtimes — the check that matters
+make build && make test      # all three runtimes — the check that matters
 ```
 
 Narrower, when iterating:
@@ -171,6 +201,7 @@ Narrower, when iterating:
 ```bash
 (cd ts && npm test)                    # `pretest` builds first, then runs dist-test/
 (cd go && go test ./...)               # unit tests + the shared spec fixtures
+(cd rs && cargo test --all-targets)    # the same, on the sibling engine
 ```
 
 Each line is a subshell. `npm test` compiles first — its `pretest` runs
@@ -191,16 +222,18 @@ defect read as an accepted condition. The wiring is fixed instead, and
 
 What "correct" means here, in order of authority:
 
-1. **The shared fixtures pass in BOTH runtimes.** `test/spec/*.tsv` is the
-   parity contract — a row green in one runtime and red in the other is a
+1. **The shared fixtures pass in EVERY runtime.** `test/spec/*.tsv` is the
+   parity contract — a row green in one runtime and red in another is a
    failure, not a discrepancy. It matters doubly here: there is no embed step
-   and no single grammar source, the two rules are written twice
-   (`ts/src/jsonl.ts`, `go/jsonl.go`), and these fixtures are the only thing
-   keeping the two copies honest.
-2. **The three version constants agree** — `ts/package.json` `"version"`, the
-   exported `VERSION` in `ts/src/jsonl.ts`, and `const VERSION` in
-   `go/jsonl.go`. `ts/test/version.test.ts` and `go/version_test.go` fail
-   (never skip) if they drift, so a version bump is three edits, not one.
+   and no single grammar source, the two rules are written three times
+   (`ts/src/jsonl.ts`, `go/jsonl.go`, `rs/src/lib.rs`), and these fixtures
+   are the only thing keeping the copies honest.
+2. **The version sites agree** — `ts/package.json` `"version"`, the
+   exported `VERSION` in `ts/src/jsonl.ts`, `const VERSION` in
+   `go/jsonl.go`, `pub const VERSION` in `rs/src/lib.rs` and `version` in
+   `rs/Cargo.toml`. `ts/test/version.test.ts`, `go/version_test.go` and
+   `rs/tests/version_test.rs` fail (never skip) if they drift, so a version
+   bump is five edits, not one.
 
 ## Releasing
 
@@ -225,9 +258,14 @@ accepts the publish. Pushing a tag by hand is the orchestrator's path
 
 The steps, in order:
 
-1. Bump all **three** version sites together — `ts/package.json`, `VERSION`
-   in `ts/src/jsonl.ts` and `const VERSION` in `go/jsonl.go`. Drift is
-   caught by `ts/test/version.test.ts` and `go/version_test.go`.
+1. Bump all **five** version sites together — `ts/package.json`, `VERSION`
+   in `ts/src/jsonl.ts`, `const VERSION` in `go/jsonl.go`, and the two
+   Rust sites (`make version-rs V=x.y.z` rewrites `rs/Cargo.toml` and
+   `rs/src/lib.rs` and refreshes `rs/Cargo.lock`). Drift is caught by
+   `ts/test/version.test.ts`, `go/version_test.go` and
+   `rs/tests/version_test.rs`. The Rust crate is not published: it
+   depends on the engine by path, which crates.io does not accept, so
+   the bump keeps the constants in step and nothing more.
 2. Verify against the **published** dependencies rather than your checkout.
    The release runner installs fresh from the registry; a working tree
    usually does not, so reproduce that before believing anything:
@@ -432,9 +470,9 @@ They stay in the Makefile because removing them is a separate change.
 
 ## Error codes
 
-This package declares **no** error codes of its own: neither runtime extends
+This package declares **no** error codes of its own: no runtime extends
 `options.error`, and the plugin's named failures (installing it without the
-strict-JSON base, or on a relaxed base) are thrown setup errors, not parse
+strict-JSON base, or on a relaxed base) are setup errors, not parse
 error codes. Rejected input surfaces whatever code the engine and
 `@tabnas/json` raise, and no fixture currently pins any code.
 
@@ -448,7 +486,7 @@ measure exactly this).
 
 The machine-readable list is [`tabnas.plugin.json`](tabnas.plugin.json)
 (`errorCodes` — correctly empty today). If this plugin ever grows a code of
-its own, add it to `options.error` in both runtimes, to that list, and to a
+its own, add it to `options.error` in every runtime, to that list, and to a
 fixture that pins it with `ERROR:<code>`: the code is the contract, not the
 message.
 

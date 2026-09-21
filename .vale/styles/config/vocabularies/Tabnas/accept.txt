@@ -12,6 +12,7 @@
 [Bb]uiltins
 [Cc]oncatenable
 [Cc]onst
+[Dd]octests
 [Ff]unc
 [Gg]oroutines
 [Jj]son
@@ -19,6 +20,7 @@
 [Ll]exed
 [Ll]exes
 [Ll]exing
+[Ll]ockfile
 [Mm]atchers
 [Nn]pm
 [Pp]arser

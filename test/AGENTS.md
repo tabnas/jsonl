@@ -1,13 +1,13 @@
 # Agents Guide — shared spec fixtures
 
-`spec/*.tsv` holds the cross-runtime conformance fixtures. Both runtimes
-auto-discover and run **every** file in this directory, so a change here
-affects TypeScript and Go together — edit with that in mind.
+`spec/*.tsv` holds the cross-runtime conformance fixtures. Every runtime
+auto-discovers and runs **every** file in this directory, so a change here
+affects TypeScript, Go and Rust together — edit with that in mind.
 
 These fixtures are the whole parity mechanism for this repo. The grammar
-is written twice (`ts/src/jsonl.ts` and `go/jsonl.go`) with no shared
-source file to embed, so nothing but these rows stops the two copies from
-drifting.
+is written three times (`ts/src/jsonl.ts`, `go/jsonl.go` and
+`rs/src/lib.rs`) with no shared source file to embed, so nothing but these
+rows stops the copies from drifting.
 
 ## Format
 
@@ -20,7 +20,7 @@ Blank lines are skipped, and so are comment lines — a line starting with
 |---|---|
 | `input` | JSONL source. Escapes `\n` `\r` `\t` `\\` are decoded. |
 | `expected` | A JSON value (the parse result), or `ERROR` / `ERROR:<code>` for inputs that must fail. The code is compared **exactly** — it is the error's code, not a substring of its message. |
-| `opts` | Present for format compatibility with sibling repos. This plugin has **no options**; both runners fail loudly if a row sets one. |
+| `opts` | Present for format compatibility with sibling repos. This plugin has **no options**; every runner fails loudly if a row sets one (the Rust runner panics, so the row fails whatever its `expected` says). |
 
 `expected` is **not** escape-decoded — it is raw JSON, so JSON's own
 escape rules apply (`"a\nb"` is a string containing a newline). To put a
@@ -54,16 +54,20 @@ suite still passes and only this file goes red.
 
 - TypeScript: `ts/test/parity.test.ts` — `makeRunner(...).dir(...)`.
 - Go: `go/parity_test.go` — `support.Runner{...}.Dir(t, dir)`.
+- Rust: `rs/tests/parity_test.rs` — `Runner::new_with_row(...).dir(...)`
+  from the `tabnas-support` crate.
 
-Both are a dozen lines holding only what is specific to jsonl: the fact
-that the plugin takes no options. Everything else — finding `test/spec`,
-reading the file, decoding escapes, the `ERROR:` contract, the comparison,
-the `<file>:<line>` in a failure message — comes from
-[`@tabnas/support`](https://github.com/tabnas/support) and its Go half, so
-the two loaders cannot drift from each other either.
+All three are a dozen lines holding only what is specific to jsonl: the
+fact that the plugin takes no options. Everything else — finding
+`test/spec`, reading the file, decoding escapes, the `ERROR:` contract, the
+comparison, the `<file>:<line>` in a failure message — comes from
+[`@tabnas/support`](https://github.com/tabnas/support) and its Go and Rust
+halves, so the three loaders cannot drift from each other either. (The
+Rust runner reports every failing row of a fixture at once rather than
+one subtest per row; that is the one shape difference.)
 
-Both discover files by directory listing: adding a `.tsv` here runs it in
-both runtimes without touching either runner. An empty fixture, and a spec
+All three discover files by directory listing: adding a `.tsv` here runs
+it in every runtime without touching any runner. An empty fixture, and a spec
 directory with no fixtures in it, both **fail** — a runner that reports
 green having run nothing is indistinguishable from coverage that was never
 there.
@@ -73,16 +77,17 @@ there.
 - Prefer adding a fixture here over a one-off in-language assertion when
   a case is expressible as input → output. That is what keeps the two
   runtimes honest against each other.
-- What a fixture **cannot** express, because both runners compare after a
-  JSON round-trip: `bigint` / `*big.Int` values, `Infinity`, `NaN`, and
+- What a fixture **cannot** express, because every runner compares after
+  a JSON round-trip: `bigint` / `*big.Int` values, `Infinity`, `NaN`, and
   the `-0` / `0` distinction. It also cannot express API surface, error
-  line numbers, or stack behaviour — those live in `ts/test/jsonl.test.ts`
-  and `go/jsonl_test.go`, mirrored case for case.
+  line numbers, or stack behaviour — those live in `ts/test/jsonl.test.ts`,
+  `go/jsonl_test.go` and `rs/tests/jsonl_test.rs`, mirrored case for case.
 - The truly empty document (`""`) cannot be written here either: an empty
   `input` column is indistinguishable from a blank line, which the loader
-  skips. That case is asserted in both in-language suites instead.
-- TypeScript is canonical. If the two runtimes disagree, the TS behaviour
-  is the expected value — unless Go has exposed a genuine TS defect, in
-  which case fix TS first and pin the corrected behaviour here.
-- A new fixture must pass in BOTH runtimes: run `go test ./...` (from
-  `go/`) and `npm test` (from `ts/`) before considering it done.
+  skips. That case is asserted in every in-language suite instead.
+- TypeScript is canonical. If the runtimes disagree, the TS behaviour
+  is the expected value — unless a port has exposed a genuine TS defect,
+  in which case fix TS first and pin the corrected behaviour here.
+- A new fixture must pass in EVERY runtime: run `go test ./...` (from
+  `go/`), `cargo test --all-targets` (from `rs/`) and `npm test` (from
+  `ts/`) before considering it done.
