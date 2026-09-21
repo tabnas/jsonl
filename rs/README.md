@@ -115,11 +115,14 @@ All deliberate:
   explicit `null` (`['#SP', null, '#CM']`). This engine replaces a token
   set outright, as the Go engine does, so the serialized options say
   `"IGNORE": ["#SP", "#CM"]`. Same result, different spelling.
-- **The plugin is a function, not a `Plugin` value.** `jsonl(&mut
-  parser)` returns `Result<(), GrammarError>`: the missing-base and
-  relaxed-base refusals are returned, not thrown, and they carry the same
-  named messages the other runtimes raise. Nothing re-applies the plugin
-  when an instance is derived.
+- **The plugin is a function first, and a `Plugin` value second.**
+  `jsonl(&mut parser)` returns `Result<(), GrammarError>`: the
+  missing-base and relaxed-base refusals are returned, not thrown, and
+  they carry the same named messages the other runtimes raise. `plugin()`
+  wraps the same function for `use_plugin`, which is what `derive`
+  re-applies; because `tabnas-json` exports only a function, a caller
+  who wants a derived child to carry both grammars registers the JSON
+  base as a `Plugin` too (the `plugin` docs show the wrapper).
 - **`make()` takes no options.** The TypeScript `make(opts)` and Go
   `Make(extra...)` apply extra options after the grammar exists. Apply
   them afterwards with `set_options`, which is the same ordering rule

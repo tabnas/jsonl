@@ -12,8 +12,8 @@ mod common;
 
 use common::{plain, records};
 use serde_json::json;
-use tabnas::{Options, Tabnas, Value};
-use tabnas_jsonl::{jsonl, make, parse, register_jsonl_grammar, JsonlError, VERSION};
+use tabnas::{Options, Plugin, PluginError, Tabnas, Value};
+use tabnas_jsonl::{jsonl, make, parse, plugin, register_jsonl_grammar, JsonlError, VERSION};
 
 fn must_parse(src: &str) -> Vec<serde_json::Value> {
     match parse(src) {
@@ -228,6 +228,60 @@ fn setting_options_afterwards_keeps_the_rule_set_and_the_behaviour() {
     );
     let value = parser.parse("{\"a\":1}\n{\"b\":2}").expect("parses");
     assert_eq!(records(&value), vec![json!({"a": 1}), json!({"b": 2})]);
+}
+
+#[test]
+fn the_plugin_value_survives_reapplication_on_derive() {
+    // Go's TestPluginSurvivesReapplication, in full. `derive` builds the
+    // child from the parent's options and re-runs the plugins registered
+    // through `use_plugin`, in order, so the base has to be a registered
+    // plugin as well: tabnas_json exports a function, so wrap it the way
+    // a caller would. Re-application must not recurse, duplicate rules or
+    // change parse behaviour.
+    let json = Plugin::new("json", |parser, _options| {
+        tabnas_json::json(parser).map_err(|error| PluginError(error.0))
+    });
+    let mut parser = Tabnas::new();
+    parser.use_plugin(json, None).expect("json installs");
+    parser.use_plugin(plugin(), None).expect("jsonl installs");
+
+    fn check(label: &str, parser: &Tabnas) {
+        assert_eq!(
+            parser.rule_names(),
+            ["val", "map", "list", "pair", "elem", "jsonl", "record"],
+            "{label}: rule set"
+        );
+        let value = parser.parse("{\"a\":1}\n{\"b\":2}").expect(label);
+        assert_eq!(
+            records(&value),
+            vec![json!({"a": 1}), json!({"b": 2})],
+            "{label}: records"
+        );
+    }
+
+    check("after use_plugin", &parser);
+
+    parser
+        .set_options(|options: &mut Options| options.comment.lex = true)
+        .expect("options apply");
+    check("after set_options", &parser);
+
+    // Derive genuinely re-invokes the registered plugins on the child.
+    let child = parser.derive(|_options| {}).expect("derives");
+    check("derived child", &child);
+
+    // The order rule holds through the plugin form too.
+    let mut bare = Tabnas::new();
+    let error = match bare.use_plugin(plugin(), None) {
+        Ok(_) => panic!("expected the bare engine to be refused"),
+        Err(error) => error,
+    };
+    assert!(
+        error
+            .to_string()
+            .contains("strict-JSON grammar must be installed first"),
+        "expected the named refusal, got {error:?}"
+    );
 }
 
 #[test]

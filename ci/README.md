@@ -22,7 +22,7 @@ This directory exists because session credentials cannot write
   (`ts/test/docs.test.js`), so promoting this adds the spelling and
   Google-convention arm rather than the whole gate.
 
-- **`workflows/rust.yml`** — the Rust gate: `rs/` built, tested,
+- **`workflows/rust.yml`**, the Rust gate: `rs/` built, tested,
   `rustfmt`-checked and clippy-clean at `-D warnings`. The commands live
   in `ci/rust/run.sh`, which the workflow calls and you can run too;
   `make test-rs` stays the fast inner loop.

@@ -46,7 +46,7 @@
 use std::sync::OnceLock;
 
 use serde_json::json;
-use tabnas::{GrammarError, GrammarSpec, Tabnas, Value};
+use tabnas::{GrammarError, GrammarSpec, Plugin, PluginError, Tabnas, Value};
 
 /// The README's Rust examples run as doctests, so a stale one fails the
 /// gate rather than misleading the reader. Its `text`, `toml` and `bash`
@@ -255,6 +255,40 @@ pub fn jsonl(parser: &mut Tabnas) -> Result<(), GrammarError> {
     let options = GrammarSpec::from_value(jsonl_options())?;
     parser.grammar(&options)?;
     register_jsonl_grammar(parser)
+}
+
+/// The plugin as a [`Plugin`] value, for [`Tabnas::use_plugin`]. This is
+/// the form the TypeScript `jsonl: Plugin` export takes, and it is what
+/// lets [`Tabnas::derive`] re-apply the grammar on a child: `derive`
+/// rebuilds the child from the parent's options and re-runs the plugins
+/// registered through `use_plugin`, in order, so a grammar installed by
+/// calling [`jsonl`] directly is not carried over.
+///
+/// The base check still applies, so the strict-JSON grammar has to be
+/// registered first, and for `derive` it has to be registered as a plugin
+/// too. `tabnas_json` exports a function, so wrap it:
+///
+/// ```
+/// use tabnas::{Plugin, PluginError, Tabnas};
+///
+/// let json = Plugin::new("json", |parser, _options| {
+///     tabnas_json::json(parser).map_err(|error| PluginError(error.0))
+/// });
+/// let mut parser = Tabnas::new();
+/// parser.use_plugin(json, None)?;
+/// parser.use_plugin(tabnas_jsonl::plugin(), None)?;
+///
+/// let child = parser.derive(|_options| {})?;
+/// assert_eq!(child.parse("1\n2")?.to_string(), "[1,2]");
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
+///
+/// The plugin takes no options; the bag `use_plugin` passes is ignored,
+/// as the TypeScript and Go plugin functions ignore theirs.
+pub fn plugin() -> Plugin {
+    Plugin::new("jsonl", |parser, _options| {
+        jsonl(parser).map_err(|error| PluginError(error.0))
+    })
 }
 
 /// Check that the engine carries a STRICT-JSON value grammar before

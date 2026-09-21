@@ -69,11 +69,16 @@ not conflate the two.
 
 ## What the in-language suite cannot mirror
 
-- **Re-application on derive.** Go's `TestPluginSurvivesReapplication`
-  registers the plugin through `Use` and derives a child. This port
-  installs by calling a function, not through `use_plugin`, so
-  `derive` has nothing to re-run; the `set_options` half of that case is
-  ported (`setting_options_afterwards_keeps_the_rule_set_and_the_behaviour`).
+- **Re-application on derive needs the base registered as a plugin.**
+  Go's `TestPluginSurvivesReapplication` registers the plugin through
+  `Use` and derives a child. Here `plugin()` is the `use_plugin` form,
+  and `the_plugin_value_survives_reapplication_on_derive` ports the case
+  in full, but the engine's `derive` starts the child with NO rules and
+  re-runs only registered plugins, and `tabnas_json` exports a function.
+  The test wraps `tabnas_json::json` in a local `Plugin` so both grammars
+  re-apply in order; `make()` installs both by function, so a child
+  derived from `make()` has no grammar at all. That is the engine's
+  `derive` contract, not a plugin bug.
 - **Nesting 200 deep inside one record.** `tabnas_json` holds this port
   to serde_json's limit of 127 open containers, so
   `deep_nesting_inside_one_record_still_works` nests 100. The limit is
