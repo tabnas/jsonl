@@ -10,6 +10,8 @@
 
 mod common;
 
+use std::fmt::Write as _;
+
 use common::{plain, records};
 use serde_json::json;
 use tabnas::{Options, Plugin, PluginError, Tabnas, Value};
@@ -338,7 +340,13 @@ fn a_bad_record_reports_the_line_it_is_on() {
 
 #[test]
 fn line_numbers_survive_many_preceding_records() {
-    let mut src: String = (0..50).map(|i| format!("{{\"i\":{i}}}\n")).collect();
+    // Built with `write!` rather than `map(format!).collect()`, which
+    // allocates a String per record and which clippy rejects under the
+    // MSRV toolchain (`format_collect`).
+    let mut src = String::new();
+    for i in 0..50 {
+        writeln!(src, "{{\"i\":{i}}}").expect("writing to a String cannot fail");
+    }
     src.push_str("not-json");
     let error = parse(&src).expect_err("expected a parse error");
     assert_eq!(error.row, 51);
