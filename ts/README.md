@@ -182,7 +182,7 @@ stops parsing. See [`doc/concepts.md`](doc/concepts.md).
 
 ```bash
 npm install
-npm run build     # tsc --build src test
+npm run build     # tsc --build src && tsc --build test
 npm test          # node --test dist-test/*.test.js
 ```
 
