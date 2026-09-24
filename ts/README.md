@@ -108,7 +108,7 @@ instance.
 
 A record's content is strict, standard JSON, inherited unchanged from
 `@tabnas/json`: double-quoted strings and keys, plain decimal numbers,
-`true` / `false` / `null`, objects and arrays. No comments, no unquoted
+`true` / `false` / `null`, objects, and arrays. No comments, no unquoted
 keys, no single quotes, no trailing commas, no `01` / `+1` / `.5` / `1.`
 / hex numbers, no `\x` escapes.
 
