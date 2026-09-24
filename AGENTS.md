@@ -117,7 +117,7 @@ long before that.
 | [`go/`](go/) tests | `jsonl_test.go` (the same API/error/layering/scale cases), `parity_test.go` (the same `.tsv` fixtures), `version_test.go`. |
 | [`rs/tests/`](rs/tests/) | `jsonl_test.rs` (the same cases again, plus the shared default parser under threads), `parity_test.rs` (the same `.tsv` fixtures, through `tabnas-support`), `version_test.rs`. |
 | [`ts/doc/`](ts/doc/), [`go/doc/`](go/doc/) | Per-runtime 4-quadrant Diataxis docs: `tutorial.md`, `guide.md`, `reference.md`, `concepts.md`. The Rust port has `rs/README.md` only. |
-| [`ci/`](ci/) | `ci/rust/run.sh`, what the Rust gate (`.github/workflows/rust.yml`) runs, and the staging area for workflow changes (see [`ci/README.md`](ci/README.md)). The prose gate runs from `.github/workflows/docs.yml`. |
+| [`ci/`](ci/) | `ci/rust/run.sh`, what the Rust gate (`.github/workflows/rust.yml`) runs (see [`ci/README.md`](ci/README.md)). The prose gate runs from `.github/workflows/docs.yml`. To change CI, edit `.github/workflows/` in a reviewed pull request and mirror the edit in the workflow's admin template where it has one (admin `DECISIONS.md` ADR-8, as amended 2026-09-24); [`ci/README.md`](ci/README.md) has the steps. |
 
 Unlike `@tabnas/zon`, there is **no single-source `*-grammar.jsonic` file
 and no embed step**. The grammar is two rules, so it is written directly
@@ -383,7 +383,8 @@ The steps, in order:
    workflow **has no test step** — it reads `main`, builds against
    already-published dependencies, publishes and tags. The bump commit's
    own CI is the only gate there is, and after the merge that is
-   `ci.yml` alone.
+   `ci.yml` and `rust.yml`: the bump touches `rs/`, so the Rust gate runs
+   on it too.
 
    An npm version is immutable, and a Go module tag is worse: proxy.golang.org caches module versions permanently,
    so a `go/vX.Y.Z` naming the wrong commit cannot be moved, only
