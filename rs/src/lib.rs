@@ -59,7 +59,7 @@ mod readme_examples {}
 /// release orchestrator rewrites both, and `tests/version_test.rs` fails
 /// the build if they drift. Mirrors `VERSION` in `ts/src/jsonl.ts` and
 /// `const VERSION` in `go/jsonl.go`.
-pub const VERSION: &str = "0.1.9";
+pub const VERSION: &str = "0.1.10";
 
 /// The error a failed parse produces, re-exported so callers need not
 /// depend on the engine crate directly. Its `row` is the line of the

@@ -1,6 +1,6 @@
-github.com/tabnas/json/go v0.5.10 h1:1oc3A7TdGnJRY4DHroGenQpjeXTIsCGvzGgSwNJdz0Q=
-github.com/tabnas/json/go v0.5.10/go.mod h1:QEPCFNyd0q+RArsCKvg5s16T9Ci5ANBtcIvcljSG8ac=
-github.com/tabnas/parser/go v0.12.2 h1:ZvJDKK0xnv+gpSwrXOIRmdTVXcyaFJwiT97lsj9NPL8=
-github.com/tabnas/parser/go v0.12.2/go.mod h1:WrlfEVyZ1QjEIowWiyEu3K1iHj7wxuPut5zoH9Trehk=
+github.com/tabnas/json/go v0.5.11 h1:H/gMeZ9Z8F4QkkDpK2p0peBdQ3cpBZbe0gXayLqf0bM=
+github.com/tabnas/json/go v0.5.11/go.mod h1:t8q/43LAbKKYDbsVurqeDZJzKRFkygOcLEGM7wqg9MU=
+github.com/tabnas/parser/go v0.12.4 h1:DBi+Lh+NlFj/WsCAWftkeeD7FAJJRpygchM3/pu9tE0=
+github.com/tabnas/parser/go v0.12.4/go.mod h1:WrlfEVyZ1QjEIowWiyEu3K1iHj7wxuPut5zoH9Trehk=
 github.com/tabnas/support/go v0.3.5 h1:BOjCXg7M+1DhNso2CTso6f/ED7n/q8IASVkrF5PDY9k=
 github.com/tabnas/support/go v0.3.5/go.mod h1:q+EGPO8fRFQAYDwRHFH4lafD5l5W/NCdY8vhN9IJOkY=
