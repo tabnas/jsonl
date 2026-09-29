@@ -235,7 +235,7 @@ npm registry. There is no corpus to download and no generated file to
 build, so a clone is ready after `npm install`.
 
 The Rust crate has no registry to fall back on: `rs/Cargo.toml` declares
-`tabnas = { path = "../../parser/rs" }`, `tabnas-json = { path =
+`tabnas = { package = "tabnas-parser", path = "../../parser/rs" }`, `tabnas-json = { path =
 "../../json/rs" }` and, as a dev-dependency, `tabnas-support = { path =
 "../../support/rs" }`. None of the three is published, so clone
 `tabnas/parser`, `tabnas/json` and `tabnas/support` as siblings of this
