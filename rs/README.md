@@ -98,7 +98,7 @@ next to this repository and point at them:
 [dependencies]
 tabnas-jsonl = { path = "../jsonl/rs" }
 tabnas-json = { path = "../json/rs" }
-tabnas = { path = "../parser/rs" }
+tabnas = { package = "tabnas-parser", path = "../parser/rs" }
 ```
 
 All three entries are needed. A crate's dependencies are not passed on
