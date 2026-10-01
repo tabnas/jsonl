@@ -390,3 +390,33 @@ pub fn parse(src: &str) -> Result<Value, JsonlError> {
     static DEFAULT: OnceLock<Tabnas> = OnceLock::new();
     DEFAULT.get_or_init(make).parse(src)
 }
+
+/// The plugin's manifest, `tabnas.plugin.json`, as the repository carries
+/// it. Its `translate` object is what a host that translates reads: the
+/// shape JSON Lines is read as and written from (`tree`), the file that
+/// holds the render, and the sentences that say what a written document
+/// does not keep. The crate embeds its own copy, `translate/manifest.json`,
+/// since a packaged crate holds nothing outside `rs/`;
+/// `tests/translate_test.rs` holds the copy to the file.
+///
+/// ```
+/// assert!(tabnas_jsonl::manifest_text().contains("\"translate\""));
+/// ```
+pub fn manifest_text() -> &'static str {
+    include_str!("../translate/manifest.json")
+}
+
+/// JSON Lines' render, `alchemy/render.alc`, the file the manifest's
+/// `translate.render` names: a library of alchemy definitions, with no
+/// `export`, whose entry point `jsonl-render` writes a tree's events as
+/// JSON Lines, one element of the root array per line, and refuses a root
+/// that is not an array. A host links it with its own program. The crate
+/// embeds its own copy, `translate/render.alc`, held to the file as the
+/// manifest's is.
+///
+/// ```
+/// assert!(tabnas_jsonl::render_text().contains("def jsonl-render [input]"));
+/// ```
+pub fn render_text() -> &'static str {
+    include_str!("../translate/render.alc")
+}
