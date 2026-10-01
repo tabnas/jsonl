@@ -112,6 +112,7 @@ long before that.
 | [`ts/`](ts/) | **Canonical** TypeScript implementation — the `@tabnas/jsonl` npm package. Plugin in `src/jsonl.ts`. Peer-depends on `@tabnas/json` and `@tabnas/parser`. |
 | [`go/`](go/) | Go port — `github.com/tabnas/jsonl/go` (`const VERSION` in `go/jsonl.go`). Plugin `Jsonl` plus `Make` / `Parse` helpers. |
 | [`rs/`](rs/) | Rust port — the `tabnas-jsonl` crate (library `tabnas_jsonl`, `pub const VERSION` in `rs/src/lib.rs`). Plugin `jsonl` plus `make` / `parse`. Depends on the `tabnas` and `tabnas-json` crates by **path** (sibling checkouts of `parser` and `json`), and on `tabnas-support` for the fixtures. Library only. See [`rs/AGENTS.md`](rs/AGENTS.md). |
+| [`alchemy/render.alc`](alchemy/render.alc) | **JSON Lines' render**, an [alchemy](https://github.com/tabnas/alchemy) library whose entry point `jsonl-render` writes a tree's events as JSON Lines, one element of the root array per line, and refuses a root that is not an array. The manifest's `translate` object names it and the Rust crate embeds it (`render_text()`, with the manifest as `manifest_text()`); see the paragraph below the table. |
 | [`test/spec/`](test/spec/) | Shared `.tsv` conformance fixtures. **Every** runner auto-discovers and runs every file here, so adding one covers TypeScript, Go and Rust together. See [`test/AGENTS.md`](test/AGENTS.md). |
 | [`ts/test/`](ts/test/) | TS tests (`.ts`, compiled to `dist-test/`): `jsonl.test.ts` (API, errors, layering, scale), `parity.test.ts` (the shared fixtures), `debug-model.test.ts` (grammar introspection via `@tabnas/debug`), `doc-examples.test.ts` (runs `// =>` assertions in the docs), `version.test.ts`. |
 | [`go/`](go/) tests | `jsonl_test.go` (the same API/error/layering/scale cases), `parity_test.go` (the same `.tsv` fixtures), `version_test.go`. |
@@ -125,6 +126,24 @@ in all three runtimes in the declarative `GrammarSpec` form — the same
 choice `@tabnas/json` makes. The shared `test/spec/*.tsv` fixtures are
 what keep the three copies honest; there is nothing to re-embed after an
 edit.
+
+The one other file beside the grammar that a host reads from here is a
+**translation part**, for a host that writes JSON Lines (aless's
+`--render`; the design is tabnas/transduce's `docs/translation.md`):
+[`alchemy/render.alc`](alchemy/render.alc), a library of alchemy
+definitions with no `export`, every one named `jsonl-...`, whose entry
+point `jsonl-render` writes a tree's events as JSON Lines, one element
+of the root array per line, and refuses a root that is not an array.
+The `translate` object in [`tabnas.plugin.json`](tabnas.plugin.json)
+says JSON Lines reads as a tree and writes from one, names the render,
+and lists what a written document does not keep. The Rust crate hands
+both over as `manifest_text()` and `render_text()` from its own copies
+under `rs/translate/`, since a packaged crate holds nothing outside
+`rs/`: **change the file at the root, then copy it there**;
+`rs/tests/translate_test.rs` fails until the copies are the files. The
+crate never runs the render, since this repository does not depend on
+alchemy (the maintainer's call, like any dependency); the round trip
+that does runs in the host.
 
 ## Authority and alignment rules
 
