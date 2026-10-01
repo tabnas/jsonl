@@ -11,13 +11,15 @@
 ; on its line: a string and a key through `quoted` (JSON's escapes, so no
 ; line break reaches the line), a number by its lexeme, or as the JSON
 ; renderer writes it when the document's spelling did not reach the
-; render, `true`, `false` and `null` by name, an object as `{"k":v,"k2":v2}`,
-; an array as `[a,b]`, and an empty one as `{}` or `[]`. An empty root
-; array writes nothing. A root that is not an array (an object or a
-; scalar) has no JSON Lines form and fails, saying what the root is and
-; that `--path` to an array would do; a non-finite number fails, since
-; JSON has no spelling for it, decided by `number-class`. Both are
-; INPUT_INVALID at the event that meets them.
+; render, `true`, `false` and `null` by name, an object as
+; `{"k":v,"k2":v2}`, an array as `[a,b]`, and an empty one as `{}` or
+; `[]`. An empty root array writes one line feed: the blank document,
+; which the reader reads as zero records, where it refuses an empty one.
+; A root that is not an array (an object or a scalar) has no JSON Lines
+; form and fails, saying what the root is and that `--path` to an array
+; would do; a non-finite number fails, since JSON has no spelling for it,
+; decided by `number-class`. Both are INPUT_INVALID at the event that
+; meets them.
 ;
 ; The events are a tree's: an object holds each key once. A walked value
 ; is one by construction; a host that streams a parse must refuse a
@@ -26,7 +28,8 @@
 ;
 ; The state is the stack of open containers, one marker each, so it grows
 ; with a document's nesting and never with its width or its length:
-; `:lines` for the root array, whose elements are the lines;
+; `:lines-open` for the root array before its first element and `:lines`
+; after it, its elements being the lines;
 ; `:object-open` for an object with nothing written yet, `:object` for
 ; one waiting for a key after a member, `:member` for one whose key is
 ; written and waits for the value; `:array-open` for an array with
@@ -69,13 +72,16 @@ def jsonl-lead [s]
 ; that ends an element of the root; nothing inside an element.
 def jsonl-tail [s]
   match (jsonl-top s)
+    case :lines-open "\n"
     case :lines "\n"
     case _ ""
 
-; An array waiting for its first item has it: the next item follows a comma.
+; An array waiting for its first item has it: the next item follows a
+; comma, or, at the root, starts the next line.
 def jsonl-opened [s]
   match (jsonl-top s)
     case :array-open (jsonl-mark :array s)
+    case :lines-open (jsonl-mark :lines s)
     case _ s
 
 ; The state a value may begin in: anywhere but an object waiting for a key.
@@ -129,7 +135,7 @@ def jsonl-event [s event]
   match event
     case array-start
       match (count s)
-        case 0 (transition [:lines] [])
+        case 0 (transition [:lines-open] [])
         case _ (transition (push :array-open (jsonl-opened (jsonl-value s))) [(jsonl-lead s) "["])
     case object-start
       match (count s)
@@ -150,6 +156,7 @@ def jsonl-event [s event]
         case _ (fail "the events end an object that is not open, which a tree's never do")
     case array-end
       match (jsonl-top s)
+        case :lines-open (transition [:root-done] ["\n"])
         case :lines (transition [:root-done] [])
         case :array-open (transition (jsonl-done (pop s)) ["]" (jsonl-tail (pop s))])
         case :array (transition (jsonl-done (pop s)) ["]" (jsonl-tail (pop s))])
