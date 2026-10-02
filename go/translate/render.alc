@@ -1,0 +1,174 @@
+; JSON Lines' render: a tree's events written as JSON Lines, one element
+; of the root array per line. This is a library of definitions, each
+; named `jsonl-...`, which a host links with its own program (alchemy's
+; `compile_sources`); its entry point is `jsonl-render`, and nothing else
+; here is the host's to call.
+;
+; The profile: JSON Lines is a sequence of JSON values, one per line, so
+; the root must be an array, and its elements are the lines. Each element
+; is written as compact JSON on one line, followed by a line feed, so an
+; element that is itself an array or an object is written as compact JSON
+; on its line: a string and a key through `quoted` (JSON's escapes, so no
+; line break reaches the line), a number by its lexeme, or as the JSON
+; renderer writes it when the document's spelling did not reach the
+; render, `true`, `false` and `null` by name, an object as
+; `{"k":v,"k2":v2}`, an array as `[a,b]`, and an empty one as `{}` or
+; `[]`. An empty root array writes one line feed: the blank document,
+; which the reader reads as zero records, where it refuses an empty one.
+; A root that is not an array (an object or a scalar) has no JSON Lines
+; form and fails, saying what the root is and that `--path` to an array
+; would do; a non-finite number fails, since JSON has no spelling for it,
+; decided by `number-class`. Both are INPUT_INVALID at the event that
+; meets them.
+;
+; The events are a tree's: an object holds each key once. A walked value
+; is one by construction; a host that streams a parse must refuse a
+; member the parse repeats, since the render writes what it is given and
+; a JSON reader keeps one of the two.
+;
+; The state is the stack of open containers, one marker each, so it grows
+; with a document's nesting and never with its width or its length:
+; `:lines-open` for the root array before its first element and `:lines`
+; after it, its elements being the lines;
+; `:object-open` for an object with nothing written yet, `:object` for
+; one waiting for a key after a member, `:member` for one whose key is
+; written and waits for the value; `:array-open` for an array with
+; nothing written yet and `:array` for one waiting for an item after
+; another. The markers decide the separators, and nothing is kept per
+; key or per item: a comma before a member or an item that follows one,
+; a colon after a key, a line feed after each element of the root. Once
+; the root array ends the state is `[:root-done]`, and nothing may follow
+; it. Events no tree has fail with INPUT_INVALID, saying so.
+
+; The top marker, or `:none` before the root value.
+def jsonl-top [s]
+  match (count s)
+    case 0 :none
+    case _ (top s)
+
+; The top container under another marker.
+def jsonl-mark [marker s]
+  push marker (pop s)
+
+; A value completed: an object waiting for its member's value waits for
+; its next key, and the root array, once ended, is the document.
+def jsonl-done [s]
+  match (count s)
+    case 0 [:root-done]
+    case _
+      match (jsonl-top s)
+        case :member (jsonl-mark :object s)
+        case _ s
+
+; What comes before a value whose parent is the top of s: a comma after
+; an item that follows one; nothing after a key, before a first item, or
+; at the start of a line of the root.
+def jsonl-lead [s]
+  match (jsonl-top s)
+    case :array ","
+    case _ ""
+
+; What comes after a value whose parent is the top of s: the line feed
+; that ends an element of the root; nothing inside an element.
+def jsonl-tail [s]
+  match (jsonl-top s)
+    case :lines-open "\n"
+    case :lines "\n"
+    case _ ""
+
+; An array waiting for its first item has it: the next item follows a
+; comma, or, at the root, starts the next line.
+def jsonl-opened [s]
+  match (jsonl-top s)
+    case :array-open (jsonl-mark :array s)
+    case :lines-open (jsonl-mark :lines s)
+    case _ s
+
+; The state a value may begin in: anywhere but an object waiting for a key.
+def jsonl-value [s]
+  match (jsonl-top s)
+    case :object-open (fail "the events hold a value where a key is due, which a tree's never do")
+    case :object (fail "the events hold a value where a key is due, which a tree's never do")
+    case _ s
+
+; A number by its lexeme, or as the JSON renderer writes it when it has
+; none; JSON spells no infinity and no NaN.
+def jsonl-number [n]
+  match (number-class n)
+    case :finite (scalar-text csv-options n)
+    case :infinity (fail "JSON has no spelling for infinity")
+    case :negative-infinity (fail "JSON has no spelling for negative infinity")
+    case :nan (fail "JSON has no spelling for NaN")
+
+def jsonl-scalar [value]
+  match (kind value)
+    case :null "null"
+    case :boolean
+      match value
+        case true "true"
+        case false "false"
+    case :number (jsonl-number value)
+    case _ (quoted value)
+
+; A key, written where the object's keys go: after a comma when a member
+; precedes it, and before its colon.
+def jsonl-member [name s]
+  match (jsonl-top s)
+    case :object-open (transition (jsonl-mark :member s) [(quoted name) ":"])
+    case :object (transition (jsonl-mark :member s) ["," (quoted name) ":"])
+    case _ (fail "the events hold a key where a value is due, which a tree's never do")
+
+; A root scalar: JSON Lines holds an array's elements, and this is none.
+def jsonl-root [value]
+  match (kind value)
+    case :null (fail "JSON Lines holds an array's elements, one per line: the root is null; give --path to an array")
+    case :boolean (fail "JSON Lines holds an array's elements, one per line: the root is a boolean; give --path to an array")
+    case :number (fail "JSON Lines holds an array's elements, one per line: the root is a number; give --path to an array")
+    case _ (fail "JSON Lines holds an array's elements, one per line: the root is a string; give --path to an array")
+
+def jsonl-step [s event]
+  match (jsonl-top s)
+    case :root-done (fail "the events hold more after the root value, which a tree's never do")
+    case _ (jsonl-event s event)
+
+def jsonl-event [s event]
+  match event
+    case array-start
+      match (count s)
+        case 0 (transition [:lines-open] [])
+        case _ (transition (push :array-open (jsonl-opened (jsonl-value s))) [(jsonl-lead s) "["])
+    case object-start
+      match (count s)
+        case 0 (fail "JSON Lines holds an array's elements, one per line: the root is an object; give --path to an array")
+        case _ (transition (push :object-open (jsonl-opened (jsonl-value s))) [(jsonl-lead s) "{"])
+    case (key name) (jsonl-member name s)
+    case (scalar value)
+      match (count s)
+        case 0 (jsonl-root value)
+        case _
+          let [s2 (jsonl-opened (jsonl-value s))]
+            transition (jsonl-done s2) [(jsonl-lead s) (jsonl-scalar value) (jsonl-tail s)]
+    case object-end
+      match (jsonl-top s)
+        case :object-open (transition (jsonl-done (pop s)) ["}" (jsonl-tail (pop s))])
+        case :object (transition (jsonl-done (pop s)) ["}" (jsonl-tail (pop s))])
+        case :member (fail "the events end an object after a key and before its value, which a tree's never do")
+        case _ (fail "the events end an object that is not open, which a tree's never do")
+    case array-end
+      match (jsonl-top s)
+        case :lines-open (transition [:root-done] ["\n"])
+        case :lines (transition [:root-done] [])
+        case :array-open (transition (jsonl-done (pop s)) ["]" (jsonl-tail (pop s))])
+        case :array (transition (jsonl-done (pop s)) ["]" (jsonl-tail (pop s))])
+        case _ (fail "the events end an array that is not open, which a tree's never do")
+
+def jsonl-finish [s]
+  match (jsonl-top s)
+    case :root-done []
+    case :none (fail "the events hold no value, where a tree's hold one")
+    case _ (fail "the events ended inside a container")
+
+; The render: the tree's events in, the lines out.
+def jsonl-render [input]
+  join ""
+    scan-emit [] jsonl-step jsonl-finish (events input)

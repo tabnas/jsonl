@@ -58,6 +58,16 @@ fn the_render_the_manifest_names_is_the_one_the_crate_embeds() {
     );
 }
 
+#[test]
+fn the_structural_interface_names_the_render_entry() {
+    let parts = tabnas_jsonl::translate().expect("JSON Lines carries translation parts");
+    assert_eq!(parts.manifest, tabnas_jsonl::manifest_text());
+    assert_eq!(parts.lift, None);
+    let render = parts.render.expect("JSON Lines carries a render");
+    assert_eq!(render.entry, "jsonl-render");
+    assert_eq!(render.source, Some(tabnas_jsonl::render_text()));
+}
+
 /// JSON Lines is read as a tree, since its reader wraps the lines in one
 /// array, and written from one: the root array's elements are the lines.
 /// Its events carry the tree already, so there is no lift, and no
