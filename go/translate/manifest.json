@@ -1,0 +1,45 @@
+{
+  "$schema": "https://tabnas.dev/schema/plugin.schema.json",
+  "name": "@tabnas/jsonl",
+  "go": "github.com/tabnas/jsonl/go",
+  "description": "JSON Lines parsing for the tabnas engine.",
+  "base": "@tabnas/json",
+  "engine": "@tabnas/parser",
+  "extensions": [
+    ".jsonl"
+  ],
+  "languageId": "jsonl",
+  "pluginKind": "grammar",
+  "grammarKind": "closure",
+  "lexStream": "clean",
+  "syncGroups": [
+    "end",
+    "comma",
+    "close"
+  ],
+  "specDir": "test/spec",
+  "clib": {
+    "dir": "go/clib",
+    "library": "libtabnasjsonl",
+    "abi": "v1",
+    "errorCodes": [
+      "usage",
+      "grammar",
+      "handle",
+      "internal"
+    ]
+  },
+  "errorCodes": [],
+  "docs": "https://tabnas.dev/docs/packages",
+  "repository": "https://github.com/tabnas/jsonl",
+  "versionSource": "ts/package.json",
+  "translate": {
+    "reads": "tree",
+    "writes": "tree",
+    "render": "alchemy/render.alc",
+    "loss": [
+      "An element that is itself an array or object is written as compact JSON on its line.",
+      "Number spellings the document did not provide are written as JSON writes them."
+    ]
+  }
+}

@@ -236,4 +236,6 @@ export function parse(src: string): any[] {
 
 export { Tabnas, TabnasError }
 export { TabnasError as JsonlError }
+export { translate } from './translate'
+export type { TranslationPart, TranslationParts } from './translate'
 export default parse
