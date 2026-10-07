@@ -286,12 +286,12 @@ Those three settings are the whole of `jsonlOptions()`; supplying them
 yourself is what lets you vary them (a different start rule, a wider
 include tag) while reusing the rules verbatim.
 
-## Pin a new behaviour in both runtimes
+## Pin a new behaviour in every runtime
 
 Parse cases live in the shared fixtures at
-[`../../test/spec/`](../../test/spec/), not in the Go suite. Both
-runtimes discover every `.tsv` in that directory, so one row covers Go
-and TypeScript:
+[`../../test/spec/`](../../test/spec/), not in the Go suite. Every
+runtime discovers every `.tsv` in that directory, so one row covers all
+three runtimes:
 
 ```tsv
 input	expected

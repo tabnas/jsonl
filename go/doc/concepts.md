@@ -66,7 +66,7 @@ value butted against the first fails at `record~c`. "Two values in a
 row" is no longer something the grammar can describe.
 
 [`test/spec/oneline.tsv`](../../test/spec/oneline.tsv) pins this
-property in both runtimes.
+property in every runtime.
 
 ## What the two rules add
 
@@ -133,8 +133,8 @@ This plugin turns comment lexing off (it inherits strict JSON), so the
 case cannot arise by default; but on an instance that re-enables
 comments, both `{"a":1} // note` on a record line and a comment on a
 line of its own between two records parse: the spare separator its
-newline creates is skipped like any other. (Verified against both
-runtimes, which agree.)
+newline creates is skipped like any other. (Verified against TypeScript
+and Go, which agree.)
 
 ## Where strictness comes from
 

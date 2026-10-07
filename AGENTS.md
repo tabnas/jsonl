@@ -253,10 +253,11 @@ In an isolated checkout the `@tabnas/*` dev dependencies resolve from the
 npm registry. There is no corpus to download and no generated file to
 build, so a clone is ready after `npm install`.
 
-The Rust crate has no registry to fall back on: `rs/Cargo.toml` declares
-`tabnas = { package = "tabnas-parser", path = "../../parser/rs" }`, `tabnas-json = { path =
-"../../json/rs" }` and, as a dev-dependency, `tabnas-support = { path =
-"../../support/rs" }`. None of the three is published, so clone
+The Rust crate has no registry to fall back on here: `rs/Cargo.toml`
+declares `tabnas = { package = "tabnas-parser", path = "../../parser/rs" }`,
+`tabnas-json = { path = "../../json/rs" }` and, as a dev-dependency,
+`tabnas-support = { path = "../../support/rs" }`. All three are on
+crates.io, but the committed manifest names them by path alone, so clone
 `tabnas/parser`, `tabnas/json` and `tabnas/support` as siblings of this
 repo before running cargo. `rs/Cargo.lock` is committed; `ci/rust/run.sh`
 checks it by diffing rather than with `--locked`, exempting the three
@@ -337,9 +338,16 @@ The steps, in order:
    Rust sites (`make version-rs V=x.y.z` rewrites `rs/Cargo.toml` and
    `rs/src/lib.rs` and refreshes `rs/Cargo.lock`). Drift is caught by
    `ts/test/version.test.ts`, `go/version_test.go` and
-   `rs/tests/version_test.rs`. The Rust crate is not published: it
-   depends on the engine by path, which crates.io does not accept, so
-   the bump keeps the constants in step and nothing more.
+   `rs/tests/version_test.rs`. The bump keeps the Rust constants in step
+   and nothing more: the crate itself ships with the step-5 dispatch.
+   Once the Go tag is on the remote, `release.yml`'s `crates` job hands
+   it to `crates-release.yml`, which publishes `rs/` from that tag to
+   crates.io over OIDC trusted publishing. It first rewrites the path
+   dependencies on the engine and json into requirements on their newest
+   crates.io versions and drops the path-only `tabnas-support`
+   dev-dependency, so `cargo publish` verify-builds against what a
+   consumer gets. It skips a version crates.io already has, and a failed
+   crates job blocks and unpublishes nothing: re-run that job to repair it.
 2. Verify against the **published** dependencies rather than your checkout.
    The release runner installs fresh from the registry; a working tree
    usually does not, so reproduce that before believing anything:
@@ -360,12 +368,14 @@ The steps, in order:
    suite then passes against unreleased code while appearing to verify the
    published one. Reinstalling is the part that matters.
 
-   One thing a clean install does **not** isolate:
-   `ts/test/doc-examples.test.*` resolves `@tabnas/*` by filesystem path
-   (`const TABNAS = path.join(REPO, '..')`), not through `node_modules`. If
-   unbuilt sibling checkouts sit beside this repo, those blocks fail with
-   `MODULE_NOT_FOUND` no matter what you installed — build the siblings, or
-   verify somewhere they are absent.
+   A clean install covers the doc examples too.
+   `ts/test/doc-examples.test.*` resolves a doc example's `require` through
+   `node_modules` first, and every `@tabnas` package the tested blocks name
+   here, `@tabnas/parser` and `@tabnas/json`, is a devDependency, so the
+   installed copy is what runs; `@tabnas/jsonl` itself resolves to this
+   repository's `ts/`. Only a `@tabnas/*` package that is not installed
+   falls back to the sibling checkout `../<x>/ts`
+   (`const TABNAS = path.join(REPO, '..')`), and no example here needs one.
 
    `npm test` already compiles here: `ts/package.json` sets `pretest` to
    `npm run build`, which npm runs automatically. No separate build step is
@@ -379,13 +389,17 @@ The steps, in order:
    ```bash
    (
      cd go
-     go mod edit -json | grep -q '"Replace": null' || { echo 'go.mod has a replace'; exit 1; }
+     go mod edit -json | jq -e '.Replace == null' >/dev/null || { echo 'go.mod has a replace'; exit 1; }
      GOWORK=off go test -count=1 ./...
    )
    ```
 
    `-count=1` because shared fixtures live outside the Go module, so a
-   changed corpus does not invalidate the test cache.
+   changed corpus does not invalidate the test cache. The check asks `jq`,
+   not `grep`: current Go leaves the `Replace` key out when there is no
+   replace, where older Go printed `"Replace": null`, and `jq` reads a
+   missing key as null, so the check passes on a clean `go.mod` and fails
+   on a replace either way.
 3. **Merge the bump through a reviewed PR.** That is the house convention —
    `CONTRIBUTING.md` squash-merges PRs and takes the title as the commit
    message — and what `release.yml`'s own header describes. A direct push to

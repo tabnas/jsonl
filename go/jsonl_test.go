@@ -5,7 +5,7 @@ package tabnasjsonl
 // jsonl_test.go — in-language tests for the Go port.
 //
 // Parse cases expressible as `input -> JSON` live in the shared
-// test/spec/*.tsv fixtures instead, so they run in BOTH runtimes (see
+// test/spec/*.tsv fixtures instead, so they run in EVERY runtime (see
 // ../test/AGENTS.md). What is left here is what a fixture cannot state:
 // the package's API surface, error metadata, the layering contract, and
 // scale.

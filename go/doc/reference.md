@@ -328,9 +328,9 @@ p := tabnasjsonl.Make(tabnas.Options{Map: &tabnas.MapOptions{Plain: &tr}})
 ## Conformance fixtures
 
 The cross-runtime parse cases live in
-[`../../test/spec/`](../../test/spec/) and are run by both runtimes
-(`go/parity_test.go` globs them; `ts/test/parity.test.ts` reads the same
-directory):
+[`../../test/spec/`](../../test/spec/) and are run by every runtime
+(`go/parity_test.go` globs them; `ts/test/parity.test.ts` and
+`rs/tests/parity_test.rs` read the same directory):
 
 | File | What it pins |
 |---|---|

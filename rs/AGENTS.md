@@ -23,8 +23,9 @@ replace). This file only covers what is specific to this crate.
 
 `Cargo.toml` takes `tabnas` (`../../parser/rs`), `tabnas-json`
 (`../../json/rs`) and, as a dev-dependency, `tabnas-support`
-(`../../support/rs`, feature `serde_json`). None is published. Clone all
-three as siblings before running cargo, and expect `Cargo.lock` to move
+(`../../support/rs`, feature `serde_json`). All three are on crates.io,
+but this manifest names them by path alone. Clone all three as siblings
+before running cargo, and expect `Cargo.lock` to move
 whenever one of them bumps its version: `../ci/rust/run.sh` exempts
 exactly those three entries when it diffs the lock, and asserts
 everything else.
