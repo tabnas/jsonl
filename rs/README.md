@@ -88,23 +88,22 @@ of only blank lines holds zero records and parses to `[]`.
 
 ## Install
 
-None of `tabnas`, `tabnas-json` or this crate is published to a
-registry, so all three are consumed as **sibling checkouts**, the
-standard tabnas development model. Clone
-`https://github.com/tabnas/parser` and `https://github.com/tabnas/json`
-next to this repository and point at them:
+All three crates are on crates.io, the engine as `tabnas-parser`, whose
+library is named `tabnas` in code:
 
-```toml
-[dependencies]
-tabnas-jsonl = { path = "../jsonl/rs" }
-tabnas-json = { path = "../json/rs" }
-tabnas = { package = "tabnas-parser", path = "../parser/rs" }
+```bash
+cargo add tabnas-jsonl tabnas-json tabnas-parser
 ```
 
 All three entries are needed. A crate's dependencies are not passed on
 to its dependents, so `tabnas-jsonl` alone does not put `tabnas` or
 `tabnas_json` in your extern prelude, and the composition example above
 would not resolve. Only `JsonlError` is re-exported.
+
+In this repository the engine and `tabnas-json` are taken by path from
+sibling checkouts instead, so clone `https://github.com/tabnas/parser` and
+`https://github.com/tabnas/json` next to it. The release workflow swaps
+those paths for crates.io versions when it publishes this crate.
 
 ## Differences from the canonical TypeScript
 

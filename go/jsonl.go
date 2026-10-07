@@ -30,7 +30,7 @@
 //
 // This is the Go port; the TypeScript package (ts/src/jsonl.ts) is
 // canonical. The two are held together by the shared test/spec/*.tsv
-// fixtures, which both runtimes discover and run.
+// fixtures, which every runtime discovers and runs.
 package tabnasjsonl
 
 import (

@@ -72,10 +72,11 @@ clean-rs:
 # ts/package.json. A release that bumps the TS and Go sites and forgets
 # these fails that test.
 #
-# Unlike publish-go it neither commits nor tags. There is nothing to
-# release: the crate depends on the engine by path, and crates.io does
-# not accept a path dependency, so tabnas-jsonl is not published. Only
-# the constants need to stay in step.
+# Unlike publish-go it neither commits nor tags, and it publishes nothing:
+# release.yml's crates job publishes tabnas-jsonl to crates.io from the
+# release tag, after crates-release.yml rewrites the manifest's path
+# dependencies as crates.io requirements. Here only the constants need to
+# stay in step.
 version-rs:
 	@test -n "$(V)" || (echo "Usage: make version-rs V=x.y.z" && exit 1)
 	sed -i.bak 's/^version = ".*"/version = "$(V)"/' rs/Cargo.toml

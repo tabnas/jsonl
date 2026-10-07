@@ -6,9 +6,10 @@
 # The engine, the strict-JSON grammar and the fixture runner are PATH
 # DEPENDENCIES on sibling checkouts (rs/Cargo.toml: `tabnas = { path =
 # "../../parser/rs" }`, `tabnas-json = { path = "../../json/rs" }`, and the
-# dev-dependency `tabnas-support = { path = "../../support/rs" }`). None of
-# the three crates is published, so there is no registry version to fall
-# back on. Clone https://github.com/tabnas/parser,
+# dev-dependency `tabnas-support = { path = "../../support/rs" }`). The three
+# crates are on crates.io, but the committed manifest names them by path
+# alone, so there is no registry version to fall back on. Clone
+# https://github.com/tabnas/parser,
 # https://github.com/tabnas/json and https://github.com/tabnas/support next
 # to this repo before running.
 set -euo pipefail

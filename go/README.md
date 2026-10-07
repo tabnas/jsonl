@@ -9,8 +9,8 @@ newline is the record separator, and a document parses to a slice of the
 per-line values.
 
 This is the Go port; the TypeScript package ([`../ts/`](../ts/)) is
-canonical. Both runtimes run the shared fixtures in
-[`../test/spec/`](../test/spec/) and produce the same values.
+canonical. Every runtime runs the shared fixtures in
+[`../test/spec/`](../test/spec/) and produces the same values.
 
 ## Install
 
@@ -142,8 +142,8 @@ go test ./...
 
 `go test` runs the in-language suite (`jsonl_test.go`) plus every shared
 fixture in [`../test/spec/`](../test/spec/), which `parity_test.go`
-discovers by glob. `ts/test/parity.test.ts` discovers the same files, so
-adding a `.tsv` there covers both runtimes.
+discovers by glob. `ts/test/parity.test.ts` and `rs/tests/parity_test.rs`
+discover the same files, so adding a `.tsv` there covers every runtime.
 
 ## License
 

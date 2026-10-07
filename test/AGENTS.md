@@ -75,7 +75,7 @@ there.
 ## Rules
 
 - Prefer adding a fixture here over a one-off in-language assertion when
-  a case is expressible as input → output. That is what keeps the two
+  a case is expressible as input → output. That is what keeps the
   runtimes honest against each other.
 - What a fixture **cannot** express, because every runner compares after
   a JSON round-trip: `bigint` / `*big.Int` values, `Infinity`, `NaN`, and

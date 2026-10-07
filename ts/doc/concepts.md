@@ -286,13 +286,13 @@ is in the [guide](guide.md#process-a-large-file-record-by-record). Line
 splitting inside the parser would duplicate what the runtime already
 does and would tie a grammar plugin to an I/O model.
 
-## TypeScript and Go
+## TypeScript and its Go and Rust ports
 
-The plugin ships in two implementations, this TypeScript one and a Go
-port, and the TypeScript one is canonical. Both are held together by the
-shared `test/spec/*.tsv` fixtures, which both suites discover and run,
-so a behaviour change that lands in one runtime and not the other goes
-red.
+The plugin ships in three implementations, this TypeScript one and the Go
+and Rust ports, and the TypeScript one is canonical. All three are held
+together by the shared `test/spec/*.tsv` fixtures, which every suite
+discovers and runs, so a behaviour change that lands in one runtime and
+not another goes red.
 
 One difference is visible in the source and is the engine's, not the
 plugin's: the TypeScript engine merges token sets **index-wise** against
