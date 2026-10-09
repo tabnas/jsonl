@@ -11,11 +11,11 @@ replace). This file only covers what is specific to this crate.
 | Path | |
 |---|---|
 | `src/lib.rs` | the whole port: the options document, the rules document, the base check, `jsonl`, `register_jsonl_grammar`, `make`, `parse`; and the translation parts, `manifest_text` and `render_text` |
-| `translate/manifest.json`, `translate/render.alc` | the crate's copies of `../tabnas.plugin.json` and `../alchemy/render.alc`, which `manifest_text()` and `render_text()` embed (a packaged crate holds nothing outside `rs/`); change the files at the root, then copy them here |
+| `translate/manifest.json`, `translate/render.alc` | the crate's copies of `../tabnas.plugin.json` and `../alchemy/render.alc`, which `manifest_text()` and `render_text()` embed (a packaged crate holds nothing outside `rs/`); change the files at the root, then run `npm run embed` in `../ts`, which writes them here |
 | `tests/parity_test.rs` | the shared `../test/spec/*.tsv` fixtures through `tabnas_support::Runner`, plus the `opts`-column guard and a fixture census |
 | `tests/jsonl_test.rs` | the in-language cases mirrored from `go/jsonl_test.go` and `ts/test/jsonl.test.ts` |
 | `tests/version_test.rs` | `Cargo.toml`, `VERSION` and `ts/package.json` must agree |
-| `tests/translate_test.rs` | the embedded manifest is `../tabnas.plugin.json`, the render it names is the embedded one, the `translate` object's shapes and loss are well formed, and every definition of the render is named `jsonl-` |
+| `tests/translate_test.rs` | the embedded manifest is `../tabnas.plugin.json`, the render it names is the embedded one, the embed it names is the one `translate()` carries (none, for JSON Lines), the `translate` object's shapes, root and loss are well formed, and every definition of the render is named `jsonl-` |
 | `tests/common/mod.rs` | the JSON normaliser the in-language cases compare through |
 | `README.md` | the crate front page; follows `../docs/STYLE-GUIDE.md` even though it is not in the gated list |
 

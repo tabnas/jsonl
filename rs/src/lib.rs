@@ -407,6 +407,8 @@ pub struct TranslationParts {
     pub manifest: &'static str,
     /// An optional lift from the grammar's events to its first read shape.
     pub lift: Option<TranslationPart>,
+    /// An optional embedding of a plain tree in the format's schema, with its reverse.
+    pub embed: Option<TranslationPart>,
     /// An optional render from the write shape to text.
     pub render: Option<TranslationPart>,
 }
@@ -414,6 +416,7 @@ pub struct TranslationParts {
 const TRANSLATION: TranslationParts = TranslationParts {
     manifest: include_str!("../translate/manifest.json"),
     lift: None,
+    embed: None,
     render: Some(TranslationPart {
         entry: "jsonl-render",
         source: Some(include_str!("../translate/render.alc")),
@@ -428,9 +431,10 @@ pub const fn translate() -> Option<TranslationParts> {
 
 /// The plugin's manifest, `tabnas.plugin.json`, as the repository carries
 /// it. Its `translate` object is what a host that translates reads: the
-/// shape JSON Lines is read as and written from (`tree`), the file that
-/// holds the render, and the sentences that say what a written document
-/// does not keep. The crate embeds its own copy, `translate/manifest.json`,
+/// shape JSON Lines is read as and written from (`tree`), the root its
+/// render needs (`array`), the file that holds the render, and the
+/// sentences that say what a written document does not keep. The crate
+/// embeds its own copy, `translate/manifest.json`,
 /// since a packaged crate holds nothing outside `rs/`;
 /// `tests/translate_test.rs` holds the copy to the file.
 ///
@@ -444,10 +448,12 @@ pub fn manifest_text() -> &'static str {
 /// JSON Lines' render, `alchemy/render.alc`, the file the manifest's
 /// `translate.render` names: a library of alchemy definitions, with no
 /// `export`, whose entry point `jsonl-render` writes a tree's events as
-/// JSON Lines, one element of the root array per line, and refuses a root
-/// that is not an array. A host links it with its own program. The crate
-/// embeds its own copy, `translate/render.alc`, held to the file as the
-/// manifest's is.
+/// JSON Lines, one element of the root array per line, and a number that
+/// is not finite as `null`. A host links it with its own program, and
+/// makes a root that is not an array the one element of one first, as
+/// the manifest's `root` asks; the render refuses any other root. The
+/// crate embeds its own copy, `translate/render.alc`, held to the file as
+/// the manifest's is.
 ///
 /// ```
 /// assert!(tabnas_jsonl::render_text().contains("def jsonl-render [input]"));
