@@ -15,11 +15,19 @@
 ; `{"k":v,"k2":v2}`, an array as `[a,b]`, and an empty one as `{}` or
 ; `[]`. An empty root array writes one line feed: the blank document,
 ; which the reader reads as zero records, where it refuses an empty one.
-; A root that is not an array (an object or a scalar) has no JSON Lines
-; form and fails, saying what the root is and that `--path` to an array
-; would do; a non-finite number fails, since JSON has no spelling for it,
-; decided by `number-class`. Both are INPUT_INVALID at the event that
-; meets them.
+;
+; JSON has no spelling for a number that is not finite (infinity,
+; negative infinity or NaN, as `number-class` tells), so one is written
+; as `null`, as `jsonl-options` says, wherever it is: an element of the
+; root, or a value inside one. alchemy's `json` writes it the same way
+; under the same entry.
+;
+; The root must be an array, since a JSON Lines document is a sequence
+; of values: an object or a scalar at the root fails with
+; TARGET_VALUE_UNREPRESENTABLE, saying what the root is. A host that
+; composes the render makes any other root the one element of an array
+; first, as the manifest's `root` (`array`) asks, so only a caller that
+; runs the render directly meets that refusal.
 ;
 ; The events are a tree's: an object holds each key once. A walked value
 ; is one by construction; a host that streams a parse must refuse a
@@ -38,7 +46,14 @@
 ; key or per item: a comma before a member or an item that follows one,
 ; a colon after a key, a line feed after each element of the root. Once
 ; the root array ends the state is `[:root-done]`, and nothing may follow
-; it. Events no tree has fail with INPUT_INVALID, saying so.
+; it. Events no tree has fail with PROTOCOL_ORDER_ERROR, saying so.
+
+; The render's policies, each read where it applies. `:non-finite` is how
+; a number that is not finite is written, which JSON has no spelling for:
+; `:null`, the one policy, writes `null`.
+def jsonl-options
+  record
+    entry :non-finite :null
 
 ; The top marker, or `:none` before the root value.
 def jsonl-top [s]
@@ -87,18 +102,19 @@ def jsonl-opened [s]
 ; The state a value may begin in: anywhere but an object waiting for a key.
 def jsonl-value [s]
   match (jsonl-top s)
-    case :object-open (fail "the events hold a value where a key is due, which a tree's never do")
-    case :object (fail "the events hold a value where a key is due, which a tree's never do")
+    case :object-open (fail :protocol-order "the events hold a value where a key is due, which a tree's never do")
+    case :object (fail :protocol-order "the events hold a value where a key is due, which a tree's never do")
     case _ s
 
 ; A number by its lexeme, or as the JSON renderer writes it when it has
-; none; JSON spells no infinity and no NaN.
+; none; one that is not finite, which JSON has no spelling for, as
+; `jsonl-options` says.
 def jsonl-number [n]
   match (number-class n)
     case :finite (scalar-text csv-options n)
-    case :infinity (fail "JSON has no spelling for infinity")
-    case :negative-infinity (fail "JSON has no spelling for negative infinity")
-    case :nan (fail "JSON has no spelling for NaN")
+    case _
+      match (get :non-finite jsonl-options)
+        case :null "null"
 
 def jsonl-scalar [value]
   match (kind value)
@@ -116,19 +132,19 @@ def jsonl-member [name s]
   match (jsonl-top s)
     case :object-open (transition (jsonl-mark :member s) [(quoted name) ":"])
     case :object (transition (jsonl-mark :member s) ["," (quoted name) ":"])
-    case _ (fail "the events hold a key where a value is due, which a tree's never do")
+    case _ (fail :protocol-order "the events hold a key where a value is due, which a tree's never do")
 
 ; A root scalar: JSON Lines holds an array's elements, and this is none.
 def jsonl-root [value]
   match (kind value)
-    case :null (fail "JSON Lines holds an array's elements, one per line: the root is null; give --path to an array")
-    case :boolean (fail "JSON Lines holds an array's elements, one per line: the root is a boolean; give --path to an array")
-    case :number (fail "JSON Lines holds an array's elements, one per line: the root is a number; give --path to an array")
-    case _ (fail "JSON Lines holds an array's elements, one per line: the root is a string; give --path to an array")
+    case :null (fail :unrepresentable "JSON Lines holds an array's elements, one per line: the document's root is null, which JSON Lines cannot carry")
+    case :boolean (fail :unrepresentable "JSON Lines holds an array's elements, one per line: the document's root is a boolean, which JSON Lines cannot carry")
+    case :number (fail :unrepresentable "JSON Lines holds an array's elements, one per line: the document's root is a number, which JSON Lines cannot carry")
+    case _ (fail :unrepresentable "JSON Lines holds an array's elements, one per line: the document's root is a string, which JSON Lines cannot carry")
 
 def jsonl-step [s event]
   match (jsonl-top s)
-    case :root-done (fail "the events hold more after the root value, which a tree's never do")
+    case :root-done (fail :protocol-order "the events hold more after the root value, which a tree's never do")
     case _ (jsonl-event s event)
 
 def jsonl-event [s event]
@@ -139,7 +155,7 @@ def jsonl-event [s event]
         case _ (transition (push :array-open (jsonl-opened (jsonl-value s))) [(jsonl-lead s) "["])
     case object-start
       match (count s)
-        case 0 (fail "JSON Lines holds an array's elements, one per line: the root is an object; give --path to an array")
+        case 0 (fail :unrepresentable "JSON Lines holds an array's elements, one per line: the document's root is an object, which JSON Lines cannot carry")
         case _ (transition (push :object-open (jsonl-opened (jsonl-value s))) [(jsonl-lead s) "{"])
     case (key name) (jsonl-member name s)
     case (scalar value)
@@ -152,21 +168,21 @@ def jsonl-event [s event]
       match (jsonl-top s)
         case :object-open (transition (jsonl-done (pop s)) ["}" (jsonl-tail (pop s))])
         case :object (transition (jsonl-done (pop s)) ["}" (jsonl-tail (pop s))])
-        case :member (fail "the events end an object after a key and before its value, which a tree's never do")
-        case _ (fail "the events end an object that is not open, which a tree's never do")
+        case :member (fail :protocol-order "the events end an object after a key and before its value, which a tree's never do")
+        case _ (fail :protocol-order "the events end an object that is not open, which a tree's never do")
     case array-end
       match (jsonl-top s)
         case :lines-open (transition [:root-done] ["\n"])
         case :lines (transition [:root-done] [])
         case :array-open (transition (jsonl-done (pop s)) ["]" (jsonl-tail (pop s))])
         case :array (transition (jsonl-done (pop s)) ["]" (jsonl-tail (pop s))])
-        case _ (fail "the events end an array that is not open, which a tree's never do")
+        case _ (fail :protocol-order "the events end an array that is not open, which a tree's never do")
 
 def jsonl-finish [s]
   match (jsonl-top s)
     case :root-done []
-    case :none (fail "the events hold no value, where a tree's hold one")
-    case _ (fail "the events ended inside a container")
+    case :none (fail :protocol-order "the events hold no value, where a tree's hold one")
+    case _ (fail :protocol-order "the events ended inside a container")
 
 ; The render: the tree's events in, the lines out.
 def jsonl-render [input]

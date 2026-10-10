@@ -37,10 +37,12 @@
   "translate": {
     "reads": "tree",
     "writes": "tree",
+    "root": "array",
     "render": "alchemy/render.alc",
     "loss": [
       "An element that is itself an array or object is written as compact JSON on its line.",
-      "Number spellings the document did not provide are written as JSON writes them."
+      "Number spellings the document did not provide are written as JSON writes them.",
+      "JSON has no spelling for Infinity or NaN, so a number that is not finite is written as null."
     ]
   }
 }
