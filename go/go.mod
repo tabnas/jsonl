@@ -3,7 +3,7 @@ module github.com/tabnas/jsonl/go
 go 1.24.7
 
 require (
-	github.com/tabnas/json/go v0.5.16
+	github.com/tabnas/json/go v0.5.17
 	github.com/tabnas/parser/go v0.12.11
 )
 
