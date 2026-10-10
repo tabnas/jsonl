@@ -27,5 +27,22 @@ var translationParts = TranslationParts{
 	Render:   &TranslationPart{Entry: "jsonl-render", Source: translationRender},
 }
 
-// Translate returns JSON Lines' immutable translation parts.
-func Translate() *TranslationParts { return &translationParts }
+// Translate returns JSON Lines' translation parts.
+// Each call returns a copy of its own, so that what one caller changes
+// is not what another reads.
+func Translate() *TranslationParts {
+	parts := translationParts
+	parts.Lift = copyPart(parts.Lift)
+	parts.Embed = copyPart(parts.Embed)
+	parts.Render = copyPart(parts.Render)
+	return &parts
+}
+
+// copyPart is a part of its own, so that no caller reaches another's.
+func copyPart(part *TranslationPart) *TranslationPart {
+	if part == nil {
+		return nil
+	}
+	copied := *part
+	return &copied
+}
