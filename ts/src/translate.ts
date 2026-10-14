@@ -114,6 +114,11 @@ const TRANSLATION: TranslationParts = Object.freeze({
 ; a colon after a key, a line feed after each element of the root. Once
 ; the root array ends the state is \`[:root-done]\`, and nothing may follow
 ; it. Events no tree has fail with PROTOCOL_ORDER_ERROR, saying so.
+;
+; Each line is a record of the text: the step answers alchemy's
+; \`:record-end\` after the line feed that ends an element of the root, and
+; once when the root array opens, so a host's writer holds a line until
+; its end, and a run that fails part way leaves whole lines behind.
 
 ; The render's policies, each read where it applies. \`:non-finite\` is how
 ; a number that is not finite is written, which JSON has no spelling for:
@@ -157,6 +162,15 @@ def jsonl-tail [s]
     case :lines-open "\\n"
     case :lines "\\n"
     case _ ""
+
+; The outputs of a step that ends a value whose parent is the top of s,
+; with the end of a record after them when the value is an element of the
+; root: its line is written whole.
+def jsonl-ended [s outputs]
+  match (jsonl-top s)
+    case :lines-open (push :record-end outputs)
+    case :lines (push :record-end outputs)
+    case _ outputs
 
 ; An array waiting for its first item has it: the next item follows a
 ; comma, or, at the root, starts the next line.
@@ -218,7 +232,7 @@ def jsonl-event [s event]
   match event
     case array-start
       match (count s)
-        case 0 (transition [:lines-open] [])
+        case 0 (transition [:lines-open] [:record-end])
         case _ (transition (push :array-open (jsonl-opened (jsonl-value s))) [(jsonl-lead s) "["])
     case object-start
       match (count s)
@@ -230,19 +244,19 @@ def jsonl-event [s event]
         case 0 (jsonl-root value)
         case _
           let [s2 (jsonl-opened (jsonl-value s))]
-            transition (jsonl-done s2) [(jsonl-lead s) (jsonl-scalar value) (jsonl-tail s)]
+            transition (jsonl-done s2) (jsonl-ended s [(jsonl-lead s) (jsonl-scalar value) (jsonl-tail s)])
     case object-end
       match (jsonl-top s)
-        case :object-open (transition (jsonl-done (pop s)) ["}" (jsonl-tail (pop s))])
-        case :object (transition (jsonl-done (pop s)) ["}" (jsonl-tail (pop s))])
+        case :object-open (transition (jsonl-done (pop s)) (jsonl-ended (pop s) ["}" (jsonl-tail (pop s))]))
+        case :object (transition (jsonl-done (pop s)) (jsonl-ended (pop s) ["}" (jsonl-tail (pop s))]))
         case :member (fail :protocol-order "the events end an object after a key and before its value, which a tree's never do")
         case _ (fail :protocol-order "the events end an object that is not open, which a tree's never do")
     case array-end
       match (jsonl-top s)
         case :lines-open (transition [:root-done] ["\\n"])
         case :lines (transition [:root-done] [])
-        case :array-open (transition (jsonl-done (pop s)) ["]" (jsonl-tail (pop s))])
-        case :array (transition (jsonl-done (pop s)) ["]" (jsonl-tail (pop s))])
+        case :array-open (transition (jsonl-done (pop s)) (jsonl-ended (pop s) ["]" (jsonl-tail (pop s))]))
+        case :array (transition (jsonl-done (pop s)) (jsonl-ended (pop s) ["]" (jsonl-tail (pop s))]))
         case _ (fail :protocol-order "the events end an array that is not open, which a tree's never do")
 
 def jsonl-finish [s]
