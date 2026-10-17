@@ -141,8 +141,16 @@ reads as a tree and writes from one, that the root the render needs is
 an array (`root`), names the render, and lists what a written document
 does not keep. A host that composes the render makes any other root the
 one element of an array first, so only a caller that runs the render
-directly meets its refusal of one (`TARGET_VALUE_UNREPRESENTABLE`).
-Every runtime carries the manifest and the render: `npm run embed` in
+directly meets its refusal of one (`TARGET_VALUE_UNREPRESENTABLE`). Its
+`translate.transduce` names the format's **transducer part**,
+[`alchemy/transduce.alc`](alchemy/transduce.alc): the document's JSON
+events from the jsonl grammar's rule passes, the library's
+`transduce-tree` over the grammar's rules, the `jsonl` rule's passes
+opening and closing the root array the lines are wrapped in, through
+which a host that reads parser events (alchemy-cli's `translate` and
+`run --grammar`) reads a document; every event is the one the walk of
+the grammar's value gives, a number's lexeme aside.
+Every runtime carries the manifest, the render and the transducer: `npm run embed` in
 `ts/` (which `npm run build` runs) writes `ts/src/translate.ts` and the
 copies under `go/translate/` and `rs/translate/`, since a packaged crate
 or module holds nothing outside its directory, and the Rust crate hands

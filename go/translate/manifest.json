@@ -39,6 +39,7 @@
     "writes": "tree",
     "root": "array",
     "render": "alchemy/render.alc",
+    "transduce": "alchemy/transduce.alc",
     "loss": [
       "An element that is itself an array or object is written as compact JSON on its line.",
       "Number spellings the document did not provide are written as JSON writes them.",

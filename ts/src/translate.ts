@@ -13,6 +13,7 @@ type TranslationParts = Readonly<{
   lift?: TranslationPart
   embed?: TranslationPart
   render?: TranslationPart
+  transduce?: TranslationPart
 }>
 
 const TRANSLATION: TranslationParts = Object.freeze({
@@ -57,6 +58,7 @@ const TRANSLATION: TranslationParts = Object.freeze({
     "writes": "tree",
     "root": "array",
     "render": "alchemy/render.alc",
+    "transduce": "alchemy/transduce.alc",
     "loss": [
       "An element that is itself an array or object is written as compact JSON on its line.",
       "Number spellings the document did not provide are written as JSON writes them.",
@@ -269,6 +271,36 @@ def jsonl-finish [s]
 def jsonl-render [input]
   join ""
     scan-emit [] jsonl-step jsonl-finish (events input)
+` }),
+  transduce: Object.freeze({ entry: "jsonl-transduce", source: `; JSON Lines' transducer part: the document's JSON events from the jsonl
+; grammar's rule passes (ParserEvents/1), streamed as the parser makes
+; them, so that a host that reads parser events (alchemy-cli's translate
+; and run --grammar, aless) reads a JSON Lines document through this file
+; rather than through transduce's inference over the grammar's rule events.
+;
+; The grammar's rules map onto a tree, so the part is the library's
+; declarative transducer, transduce-tree, with a spec keyed by rule name.
+; The jsonl rule spans the document, opening once before the first line
+; and closing once at the end, so its passes begin and end the root array
+; the walk wraps the lines in; the record rule, one line, yields nothing
+; of its own. Within a line the rules are json's: a map rule's open pass
+; begins an object and its close pass ends it, a list rule's an array; a
+; pair rule's open pass announces the member's name, its first token's
+; value; and a val rule's open pass yields the scalar its first token
+; carries, with the lexeme a number token keeps (2.50 is written 2.50).
+; Every event is the one the walk of the grammar's value gives, a number's
+; lexeme aside, which alchemy-cli's transduce.tsv runner holds it to; a
+; repeated member is streamed twice, as the document spells it, for a
+; tree-contract or a capture's policy to judge.
+def jsonl-transduce [input]
+  transduce-tree
+    record
+      entry :jsonl (record (entry :container :array))
+      entry :map (record (entry :container :object))
+      entry :list (record (entry :container :array))
+      entry :pair (record (entry :key 0))
+      entry :val (record (entry :scalar 0))
+    input
 ` })
 })
 

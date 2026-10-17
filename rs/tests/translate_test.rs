@@ -10,7 +10,8 @@
 // repository, to the embedded one, as it would an embed the manifest
 // named. Change the file at the root and run `npm run embed` in `ts/`,
 // which copies it into `rs/translate/`; this fails until both are the
-// same.
+// same. The transducer the manifest names, `alchemy/transduce.alc`, is a
+// file of this repository's, and its copy is held the same way.
 
 use std::fs;
 use std::path::Path;
@@ -96,6 +97,44 @@ fn the_structural_interface_names_the_render_entry() {
     let render = parts.render.expect("JSON Lines carries a render");
     assert_eq!(render.entry, "jsonl-render");
     assert_eq!(render.source, Some(tabnas_jsonl::render_text()));
+    let transduce = parts.transduce.expect("JSON Lines carries a transducer");
+    assert_eq!(transduce.entry, "jsonl-transduce");
+    assert!(transduce.source.is_some_and(|s| !s.is_empty()));
+}
+
+/// A transducer makes the format's JSON events of its parser's rule
+/// passes. JSON Lines' is `alchemy/transduce.alc`, the library's
+/// `transduce-tree` over the grammar's rules, the `jsonl` rule's passes
+/// opening and closing the root array, and the crate embeds its own copy
+/// under the entry `jsonl-transduce`: this holds the copy to the file the
+/// manifest names.
+#[test]
+fn the_transducer_the_manifest_names_is_the_one_the_crate_embeds() {
+    let translate = translate();
+    let parts = tabnas_jsonl::translate().expect("JSON Lines carries translation parts");
+    let path = translate["transduce"]
+        .as_str()
+        .expect("the manifest names a transducer");
+    assert_eq!(path, "alchemy/transduce.alc");
+    let on_disk = fs::read_to_string(repo_root().join(path))
+        .unwrap_or_else(|e| panic!("translate.transduce names {path}, which cannot be read: {e}"));
+    assert!(
+        on_disk.contains("def jsonl-transduce [input]"),
+        "{path} defines jsonl-transduce"
+    );
+    assert!(
+        on_disk.contains("entry :jsonl (record (entry :container :array))"),
+        "{path} opens and closes the root array on the jsonl rule"
+    );
+    let transduce = parts.transduce.unwrap_or_else(|| {
+        panic!("translate.transduce names {path}, and the crate carries no transducer")
+    });
+    assert_eq!(transduce.entry, "jsonl-transduce");
+    assert_eq!(
+        transduce.source,
+        Some(on_disk.as_str()),
+        "translate.transduce names {path}, and the crate embeds another text: run npm run embed in ts"
+    );
 }
 
 /// JSON Lines is read as a tree, since its reader wraps the lines in one
