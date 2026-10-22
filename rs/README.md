@@ -50,6 +50,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
+A parser from `make()` also reads a source from a reader, such as a file,
+with `parse_reader`. It holds a window of the text as it parses, never the
+whole document, and gives what `parse` gives for the same text.
+
 A malformed record fails the whole parse with a `JsonlError` (the
 engine's `TabnasError`, re-exported) whose `row` is the line of the
 offending record, so a bad line in a large file is findable:
