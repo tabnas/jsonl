@@ -361,6 +361,14 @@ pub fn make() -> Tabnas {
     let mut parser = Tabnas::new();
     tabnas_json::json(&mut parser).expect("the JSON grammar document is fixed and valid");
     jsonl(&mut parser).expect("the JSONL grammar document is fixed, and the JSON base is strict");
+    // Every token of this grammar, JSON's base included, is the engine's
+    // own matchers', and JSON's one check reads no further than a number's
+    // literal, so a parse from a reader may hold a window of the source
+    // rather than all of it (`Tabnas::parse_reader`, admin ADR-30). Set on
+    // the parser this crate makes whole, not in [`jsonl`].
+    parser
+        .set_options(|options| options.lex.window = true)
+        .expect("lex.window sets");
     parser
 }
 
