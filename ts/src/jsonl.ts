@@ -216,6 +216,13 @@ function assertStrictJsonBase(tn: Tabnas): void {
 // applied after the grammar exists, mirroring the Go `Make`.
 export function make(opts?: Record<string, any>): Tabnas {
   const tn = new Tabnas({ plugins: [json, jsonl] })
+  // Every token of this grammar, JSON's base included, is the engine's own
+  // matchers', and JSON's one check reads no further than a number's text,
+  // so a parse from a reader (`tn.parseReader`, admin ADR-30) may hold a
+  // window of the source rather than all of it. The option is set here, on
+  // the parser this package makes whole, and not in the `jsonl` plugin,
+  // which another grammar may install beneath matchers of its own.
+  tn.options({ lex: { window: true } })
   if (opts) {
     tn.options(opts)
   }

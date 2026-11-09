@@ -69,6 +69,14 @@ const p = make()
 p.parse('1\n2') // => [1, 2]
 ```
 
+The instance declares `lex.window`, so `p.parseReader(reader)` reads a
+source a window at a time rather than whole. It gives the value and the
+errors `p.parse` gives for the same text, except that an error on a line
+longer than the window shows the line from where the window begins. The
+`jsonl` plugin on its own leaves the option off, so that a grammar
+installing the plugin beside lexing of its own declares the window itself,
+once its own lexing reads the text only through the window.
+
 ### `jsonl: Plugin`
 
 The standard plugin form, `function jsonl(tn, _options?)`. **This plugin

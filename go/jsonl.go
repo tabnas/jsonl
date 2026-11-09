@@ -267,6 +267,14 @@ func Make(extra ...tabnas.Options) *tabnas.Tabnas {
 		// base was just installed.
 		panic(err)
 	}
+	// Every token of this grammar, JSON's base included, is the engine's
+	// own matchers', and JSON's one check reads no further than a number's
+	// text, so a parse from a reader (ParseReader, admin ADR-30) may hold a
+	// window of the source rather than all of it. The option is set here,
+	// on the parser this package makes whole, and not in Jsonl, which
+	// another grammar may install beneath matchers of its own.
+	window := true
+	j.SetOptions(tabnas.Options{Lex: &tabnas.LexOptions{Window: &window}})
 	// Extra options are applied after the grammar exists so that rule
 	// include/exclude filters operate on the installed alternates.
 	for _, o := range extra {
