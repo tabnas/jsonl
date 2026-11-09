@@ -67,6 +67,10 @@ record, in source order. A JSON object parses to a
 rebuild the engine, and it is safe for concurrent use. To configure the
 parser, build your own instance with `tabnasjsonl.Make(extra ...)`.
 
+A parser from `Make` also reads a source from an `io.Reader`, such as a
+file, with `ParseReader`. It holds a window of the text as it parses,
+never the whole document, and gives what `Parse` gives for the same text.
+
 ## One record per line
 
 The format's defining rule is that a record occupies exactly one line, so

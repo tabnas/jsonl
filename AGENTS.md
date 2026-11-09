@@ -114,9 +114,9 @@ long before that.
 | [`rs/`](rs/) | Rust port — the `tabnas-jsonl` crate (library `tabnas_jsonl`, `pub const VERSION` in `rs/src/lib.rs`). Plugin `jsonl` plus `make` / `parse`. Depends on the `tabnas` and `tabnas-json` crates by **path** (sibling checkouts of `parser` and `json`), and on `tabnas-support` for the fixtures. Library only. See [`rs/AGENTS.md`](rs/AGENTS.md). |
 | [`alchemy/render.alc`](alchemy/render.alc) | **JSON Lines' render**, an [alchemy](https://github.com/tabnas/alchemy) library whose entry point `jsonl-render` writes a tree's events as JSON Lines, one element of the root array per line, and a number that is not finite as `null`. The manifest's `translate` object names it and says that the root it needs is an array (`root`), and every runtime embeds it (in Rust `render_text()`, with the manifest as `manifest_text()`); see the paragraph below the table. |
 | [`test/spec/`](test/spec/) | Shared `.tsv` conformance fixtures. **Every** runner auto-discovers and runs every file here, so adding one covers TypeScript, Go and Rust together. See [`test/AGENTS.md`](test/AGENTS.md). |
-| [`ts/test/`](ts/test/) | TS tests (`.ts`, compiled to `dist-test/`): `jsonl.test.ts` (API, errors, layering, scale), `parity.test.ts` (the shared fixtures), `debug-model.test.ts` (grammar introspection via `@tabnas/debug`), `doc-examples.test.ts` (runs `// =>` assertions in the docs), `version.test.ts`. |
-| [`go/`](go/) tests | `jsonl_test.go` (the same API/error/layering/scale cases), `parity_test.go` (the same `.tsv` fixtures), `version_test.go`. |
-| [`rs/tests/`](rs/tests/) | `jsonl_test.rs` (the same cases again, plus the shared default parser under threads), `parity_test.rs` (the same `.tsv` fixtures, through `tabnas-support`), `version_test.rs`. |
+| [`ts/test/`](ts/test/) | TS tests (`.ts`, compiled to `dist-test/`): `jsonl.test.ts` (API, errors, layering, scale), `parity.test.ts` (the shared fixtures), `reader.test.ts` (a parse from a reader, below), `debug-model.test.ts` (grammar introspection via `@tabnas/debug`), `doc-examples.test.ts` (runs `// =>` assertions in the docs), `version.test.ts`. |
+| [`go/`](go/) tests | `jsonl_test.go` (the same API/error/layering/scale cases), `parity_test.go` (the same `.tsv` fixtures), `reader_test.go` (a parse from a reader), `version_test.go`. |
+| [`rs/tests/`](rs/tests/) | `jsonl_test.rs` (the same cases again, plus the shared default parser under threads), `parity_test.rs` (the same `.tsv` fixtures, through `tabnas-support`), `reader_test.rs` (a parse from a reader), `version_test.rs`. |
 | [`ts/doc/`](ts/doc/), [`go/doc/`](go/doc/) | Per-runtime 4-quadrant Diataxis docs: `tutorial.md`, `guide.md`, `reference.md`, `concepts.md`. The Rust port has `rs/README.md` only. |
 | [`ci/`](ci/) | `ci/rust/run.sh`, what the Rust gate (`.github/workflows/rust.yml`) runs (see [`ci/README.md`](ci/README.md)). The prose gate runs from `.github/workflows/docs.yml`. To change CI, edit `.github/workflows/` in a reviewed pull request and mirror the edit in the workflow's admin template where it has one (admin `DECISIONS.md` ADR-8, as amended 2026-09-24); [`ci/README.md`](ci/README.md) has the steps. |
 
@@ -160,6 +160,38 @@ each runtime's translation test fails until the copies are the files.
 The packages never run the render, since this repository does not
 depend on alchemy (the maintainer's call, like any dependency); the
 round trip that does runs in the host.
+
+## A parse from a reader
+
+The parser `make()` / `Make()` / `make()` builds declares the engine's
+`lex.window` (admin ADR-30 and ADR-33), after this plugin is installed on
+the strict-JSON base. Every token of the assembled grammar is the
+engine's own matchers', and JSON's one check, its number exclusion, reads
+no further than a number's text, so a parse from a reader
+(`tn.parseReader`, `ParseReader`, `parse_reader`) holds a window of the
+source rather than all of it, and gives the value and errors a parse of
+the same text gives. The one lexer override, `#LN` dropped from
+`IGNORE`, changes which tokens the parser skips, not how the text is
+read, so it needs nothing under the window. The plugin (`jsonl`,
+`Jsonl`, `jsonl()`) leaves the window off in every runtime, as json's
+does: the window is a claim about every matcher of the assembled grammar,
+which only the constructor that assembles it can make.
+
+`ts/test/reader.test.ts`, `go/reader_test.go` and
+`rs/tests/reader_test.rs` hold it: every row of `test/spec/*.tsv`, parsed
+whole and from a reader handed over in pieces of 1, 3 and 64 bytes, gives
+the same value, or an error with the same code, position, row and column
+(the excerpt aside, which on a line longer than the window shows the line
+from where the window begins). TypeScript and Rust read each also under
+windows whose margin and block are a few units (`parseReaderWithSizes`,
+`parse_reader_with_sizes`), so that every matcher meets the window's
+edge, and read a file of tokens longer than the 64 KiB window. Go's hook
+for small windows is unexported, so `go/reader_test.go` builds a file of
+over 1 MB in which a token of every kind, the long ones included, spans a
+multiple of 64 KiB, and reads it in pieces of several sizes. Its files
+stay small in record count: a Go parse of JSON Lines takes time that
+grows with the square of the record count, from the `@push$` chain walk
+(tabnas/jsonl#57).
 
 ## Authority and alignment rules
 

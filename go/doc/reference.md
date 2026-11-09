@@ -70,6 +70,14 @@ doc, err := p.Parse("1\n2\n3")
 // doc: []any{float64(1), float64(2), float64(3)}
 ```
 
+The instance declares `Lex.Window`, so `p.ParseReader(r)` reads a source
+a window at a time rather than whole. It gives the value and the errors
+`p.Parse` gives for the same text, except that an error on a line longer
+than the window shows the line from where the window begins. `Jsonl` on
+its own leaves the option off, so that a grammar installing the plugin
+beside lexing of its own declares the window itself, once its own lexing
+reads the text only through the window.
+
 `Make` panics only if installing the fixed grammar spec fails: a
 programmer error in this package or its dependency, not reachable from
 caller input.
