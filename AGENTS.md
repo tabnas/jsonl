@@ -147,7 +147,7 @@ directly meets its refusal of one (`TARGET_VALUE_UNREPRESENTABLE`). Its
 events from the jsonl grammar's rule passes, the library's
 `transduce-tree` over the grammar's rules, the `jsonl` rule's passes
 opening and closing the root array the lines are wrapped in, through
-which a host that reads parser events (alchemy-cli's `translate` and
+which a host that reads parser events (dmog's `translate` and
 `run --grammar`) reads a document; every event is the one the walk of
 the grammar's value gives, a number's lexeme aside.
 Every runtime carries the manifest, the render and the transducer: `npm run embed` in
